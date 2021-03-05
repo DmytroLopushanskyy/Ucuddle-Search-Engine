@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  crawler:
+    build: ./crawler
+    volumes:
+      - ./crawler:/crawler
+  elastic-interaction:
+    build: ./elastic-interaction
+    volumes:
+      - ./elastic-interaction:/elastic-interaction
