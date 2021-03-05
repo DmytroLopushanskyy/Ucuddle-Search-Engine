@@ -5,7 +5,22 @@ services:
     build: ./crawler
     volumes:
       - ./crawler:/crawler
+  elasticsearch:
+    image: "elasticsearch:5"
+    restart: always
+    volumes:
+      - ./ES_DATA:/usr/share/elasticsearch/data
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+#    ports:
+#      - "9200:9200"
   elastic-interaction:
     build: ./elastic-interaction
     volumes:
       - ./elastic-interaction:/elastic-interaction
+    environment:
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
+    depends_on:
+      - elasticsearch

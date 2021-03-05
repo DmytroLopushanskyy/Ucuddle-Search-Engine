@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -226,6 +227,7 @@ func deleting(es *elasticsearch.Client, deleteStrIdx string, id string) {
 }
 
 func main() {
+	time.Sleep(10 * time.Second)
 	// TODO: how
 	// to read line from user without \n with normal construction
 
