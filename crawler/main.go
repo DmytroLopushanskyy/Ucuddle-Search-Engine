@@ -1,6 +1,7 @@
 package main
 
-import ("fmt"
+import (
+	"fmt"
 		"encoding/json"
 		"time"
 		"log"
@@ -60,9 +61,9 @@ func main() {
 
 	then_1 := time.Now()
 	
-	crawl(links[0],"out_1.json")
-	crawl(links[1],"out_2.json")
-	crawl(links[2],"out_3.json")
+	crawl(links[0],"crawler/out_1.json")
+	crawl(links[1],"crawler/out_2.json")
+	crawl(links[2],"crawler/out_3.json")
 
 	then_2 := time.Now()
 	p("")
