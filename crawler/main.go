@@ -1,89 +1,124 @@
 package main
 
 import (
-	"fmt"
+		"fmt"
 		"encoding/json"
 		"time"
-		"log"
 		"github.com/gocolly/colly"
 		"io/ioutil"
+		"bufio"
+		"log"
+		"os"
 		)
 
-type Fact struct {
-	Description string `json:"desctiption"`
+type Site struct {
+	Title   string    `json:"title"`
+	Link    string    `json:"link"`
+	Text    map[string][]string    `json:"text"`
+	Hyperlinks    []string  `json:hyperlinks`
+	AddedAt time.Time `json:"added_at_time"`
+	
 }
 
-func writeJSON(data []Fact, writefile string){
+func writeJSON(data []Site, writefile string){
 	file, err := json.MarshalIndent(data, "", " ")
 	if err != nil{
-		log.Println("error")
+		log.Println("error while writing a file")
 		return
 	}
 
 	_ = ioutil.WriteFile(writefile, file, 0644)
 }
 
-func crawl(link string, writefile string){
-	allFacts := make([]Fact, 0)
+func readLines(path string) ([]string, error) {
+    file, err := os.Open(path)
+    if err != nil {
+        return nil, err
+    }
+    defer file.Close()
 
-    // colector -> colly scrape interface
-	collector := colly.NewCollector()
+    var lines []string
+    scanner := bufio.NewScanner(file)
+    for scanner.Scan() {
+        lines = append(lines, scanner.Text())
+    }
+    return lines, scanner.Err()
+}
+ func crawl(link string,  jobs <-chan int, results chan<- int, lst *[]Site){
+	allSites := make([]Site, 0)
+	 
+	 // colector -> colly scrape interface
+	 collector := colly.NewCollector()
 
-
-	// happens on the request
-	collector.OnRequest(func (request *colly.Request){
-		fmt.Println("Visiting", request.URL.String())
+	 
+	 // happens on the request
+	 collector.OnRequest(func (request *colly.Request){
+		 fmt.Println("Visiting", request.URL.String())
+		})
+		
+	collector.OnError(func(r *colly.Response, err error) {
+		fmt.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
+		results <- 0 
+		return 
 	})
 
-	// Called right after OnResponse
+	var mum map[string][]string
+	mum = make(map[string][]string)
 	collector.OnHTML("p", func(element *colly.HTMLElement){
-		fact := Fact{ Description: element.Text,}
+		mum[element.Name] = append(mum[element.Name], element.Text)
+		site := Site{ Text: mum,
+					  Title: "",
+					  Link: (element.Request).URL.String(),
+					  Hyperlinks: make([]string,0)}
 
-		allFacts = append(allFacts, fact)
-
+		allSites = append(allSites, site)
+		
+	})
+	
+	collector.OnHTML("title", func(element *colly.HTMLElement){
+		allSites[0].Title = element.Text
 	})
 	
 
-	collector.Visit(link)
+	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		link := e.Request.AbsoluteURL(e.Attr("href"))
+		if link != "" {
+			allSites[0].Hyperlinks = append(allSites[0].Hyperlinks, link)
+			}
+	 })
 
-	writeJSON(allFacts, writefile)
+	collector.OnError(func(response *colly.Response, err error) {
+		results <- -1
+	})
+	collector.Visit(link)
+	*lst = append(*lst, allSites[0])
+	results <- 0 
 }
 
 func main() {
-	var links [3]string;
-	links[0] = "https://en.wikipedia.org/wiki/Werner_Heisenberg"
-	links[1] = "https://en.wikipedia.org/wiki/Warren_G._Harding"
-	links[2] = "https://en.wikipedia.org/wiki/World_of_Warcraft"
+	links, err := readLines("links.txt")
+    if err != nil {
+        log.Fatalf("readLines: %s", err)
+    }
+    var numJobs = len(links)
+    jobs := make(chan int, numJobs)
+    results := make(chan int, numJobs)
 
+	var sites []Site
+	sites = make([]Site, 0)	
+    for w := 1; w <= numJobs; w++ {
+		go crawl(links[w-1], jobs, results,&sites)
+    }
 
+    for j := 1; j <= numJobs; j++ {
+        jobs <- j
+    }
+    close(jobs)
 
-	p := fmt.Println
-
-	then_1 := time.Now()
-	
-	crawl(links[0],"crawler/out_1.json")
-	crawl(links[1],"crawler/out_2.json")
-	crawl(links[2],"crawler/out_3.json")
-
-	then_2 := time.Now()
-	p("")
-	p("consecutive crawl time:")
-	p(then_2.Sub(then_1))
-	p("")
-	
-
-	then_3 := time.Now()
-	
-
-	// does not work properly yet
-	go crawl(links[0], "out_1.json")
-	go crawl(links[1], "out_2.json")
-	go crawl(links[2], "out_3.json")
-
-	then_4 := time.Now()
-	p("parallel crawl time:")
-	p(then_4.Sub(then_3))
-	p("")
-
+    for a := 1; a <= numJobs; a++ {
+        <-results
+    }
+	writeJSON(sites, "out.json")
 
 }
+
