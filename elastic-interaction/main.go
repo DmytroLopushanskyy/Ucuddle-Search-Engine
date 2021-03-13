@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -227,7 +228,16 @@ func deleting(es *elasticsearch.Client, deleteStrIdx string, id string) {
 }
 
 func main() {
-	time.Sleep(10 * time.Second)
+	// Perform health-check
+	for {
+		resp, err := http.Get("http://elasticsearch:9200")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	// Elasticsearch server has started. The program begins
+
 	// TODO: how
 	// to read line from user without \n with normal construction
 
