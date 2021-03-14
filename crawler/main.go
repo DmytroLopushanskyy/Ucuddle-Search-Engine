@@ -9,12 +9,14 @@ import (
 		"bufio"
 		"log"
 		"os"
+		"strings"
 		)
 
 type Site struct {
 	Title   string    `json:"title"`
 	Link    string    `json:"link"`
 	Text    map[string][]string    `json:"text"`
+	InlineText string `json:"inline_text"`
 	Hyperlinks    []string  `json:hyperlinks`
 	AddedAt time.Time `json:"added_at_time"`
 	
@@ -91,6 +93,7 @@ func readLines(path string) ([]string, error) {
 		results <- -1
 	})
 	collector.Visit(link)
+	allSites[0].InlineText = strings.Join(allSites[0].Text["p"], " \n ")
 	*lst = append(*lst, allSites[0])
 	results <- 0 
 }
@@ -119,6 +122,4 @@ func main() {
         <-results
     }
 	writeJSON(sites, "out.json")
-
 }
-
