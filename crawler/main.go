@@ -15,11 +15,9 @@ import (
 type Site struct {
 	Title   string    `json:"title"`
 	Link    string    `json:"link"`
-	Text    map[string][]string    `json:"text"`
-	InlineText string `json:"inline_text"`
+	Content string `json:"inline_text"`
 	Hyperlinks    []string  `json:hyperlinks`
 	AddedAt time.Time `json:"added_at_time"`
-	
 }
 
 func writeJSON(data []Site, writefile string){
@@ -66,16 +64,19 @@ func readLines(path string) ([]string, error) {
 
 	var mum map[string][]string
 	mum = make(map[string][]string)
+	// var index int = 0;
 	collector.OnHTML("p", func(element *colly.HTMLElement){
 		mum[element.Name] = append(mum[element.Name], element.Text)
-		site := Site{ Text: mum,
+		site := Site{ 
 					  Title: "",
 					  Link: (element.Request).URL.String(),
-					  Hyperlinks: make([]string,0)}
+					  Hyperlinks: make([]string,0),
+					  }
 
 		allSites = append(allSites, site)
 		
 	})
+
 	
 	collector.OnHTML("title", func(element *colly.HTMLElement){
 		allSites[0].Title = element.Text
@@ -93,7 +94,9 @@ func readLines(path string) ([]string, error) {
 		results <- -1
 	})
 	collector.Visit(link)
-	allSites[0].InlineText = strings.Join(allSites[0].Text["p"], " \n ")
+	// fmt.Println(mum["p"])
+	// var l []string = *a
+	allSites[0].Content = strings.Join(mum["p"], " \n ")
 	*lst = append(*lst, allSites[0])
 	results <- 0 
 }
