@@ -1,26 +1,50 @@
 version: '3'
 
 services:
-  crawler:
-    build: ./crawler
+  web:
+    image: dmytrolopushanskyy/ucuddle-crawlers:web
+    restart: always
+    build: ./web
+    ports:
+      - "8005:8000"
     volumes:
-      - ./crawler:/crawler
+      - web-data:/usr/src/app/static
+    env_file:
+      - .env
+    command: /usr/local/bin/gunicorn -w 2 -b :8000 app:app
+  nginx:
+    image: dmytrolopushanskyy/ucuddle-crawlers:nginx
+    restart: always
+    build: ./nginx
+    ports:
+      - "5006:80"
+    volumes:
+      - .:/www/static
+      - web-data:/usr/src/app/static
+    links:
+      - web:web
+    depends_on:
+      - web
   elasticsearch:
-    image: "elasticsearch:5"
+    image: "elasticsearch:7.11.1"
     restart: always
     volumes:
       - ./ES_DATA:/usr/share/elasticsearch/data
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
+      - logger.level=WARN
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
-      - "9200:9200"
-  elastic-interaction:
-    build: ./elastic-interaction
+      - "9205:9200"
+  crawler:
+    image: dmytrolopushanskyy/ucuddle-crawlers:crawler
+    build: ./crawler
     volumes:
-      - ./elastic-interaction:/elastic-interaction
+      - ./crawler:/crawler
     environment:
       ELASTICSEARCH_URL: "http://elasticsearch:9200"
     depends_on:
       - elasticsearch
+volumes:
+  web-data:
