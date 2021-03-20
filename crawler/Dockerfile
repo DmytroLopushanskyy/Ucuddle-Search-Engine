@@ -6,6 +6,8 @@ FROM golang:alpine AS builder
 # Install git.
 # Git is required for fetching the dependencies.
 RUN apk update && apk add --no-cache git
+RUN apk add -U --no-cache ca-certificates
+
 WORKDIR $GO_PATH/src/ucuddle-crawlers/crawler/
 COPY . .
 # Fetch dependencies.
@@ -21,5 +23,8 @@ RUN CGO_ENABLED=0 go build -a -installsuffix cgo -o /go/bin/main
 FROM scratch
 # Copy our static executable.
 COPY --from=builder /go/bin/main /
+COPY --from=builder $GO_PATH/src/ucuddle-crawlers/crawler/links.txt /
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
 # Run the binary.
 CMD ["/main"]

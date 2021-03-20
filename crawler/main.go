@@ -1,124 +1,201 @@
 package main
 
 import (
-		"fmt"
-		"encoding/json"
-		"time"
-		"github.com/gocolly/colly"
-		"io/ioutil"
-		"bufio"
-		"log"
-		"os"
-		)
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"github.com/gocolly/colly"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
 
-type Site struct {
-	Title   string    `json:"title"`
-	Link    string    `json:"link"`
-	Text    map[string][]string    `json:"text"`
-	Hyperlinks    []string  `json:hyperlinks`
-	AddedAt time.Time `json:"added_at_time"`
-	
-}
+func writeJSON(data <-chan Site, writefile string) {
+	allSites := make([]Site, 0)
+	for msg := range data {
+		allSites = append(allSites, msg)
+	}
 
-func writeJSON(data []Site, writefile string){
-	file, err := json.MarshalIndent(data, "", " ")
-	if err != nil{
+	file, err := json.MarshalIndent(allSites, "", " ")
+	if err != nil {
 		log.Println("error while writing a file")
 		return
 	}
-
 	_ = ioutil.WriteFile(writefile, file, 0644)
+
 }
 
 func readLines(path string) ([]string, error) {
-    file, err := os.Open(path)
-    if err != nil {
-        return nil, err
-    }
-    defer file.Close()
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
 
-    var lines []string
-    scanner := bufio.NewScanner(file)
-    for scanner.Scan() {
-        lines = append(lines, scanner.Text())
-    }
-    return lines, scanner.Err()
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
 }
- func crawl(link string,  jobs <-chan int, results chan<- int, lst *[]Site){
-	allSites := make([]Site, 0)
-	 
-	 // colector -> colly scrape interface
-	 collector := colly.NewCollector()
 
-	 
-	 // happens on the request
-	 collector.OnRequest(func (request *colly.Request){
-		 fmt.Println("Visiting", request.URL.String())
-		})
-		
-	collector.OnError(func(r *colly.Response, err error) {
-		fmt.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
-		results <- 0 
-		return 
-	})
+func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.WaitGroup) {
+	for true {
+		select {
+		case k := <-queue:
+			allSites := make([]Site, 0)
 
-	var mum map[string][]string
-	mum = make(map[string][]string)
-	collector.OnHTML("p", func(element *colly.HTMLElement){
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site := Site{ Text: mum,
-					  Title: "",
-					  Link: (element.Request).URL.String(),
-					  Hyperlinks: make([]string,0)}
+			collector := colly.NewCollector()
 
-		allSites = append(allSites, site)
-		
-	})
-	
-	collector.OnHTML("title", func(element *colly.HTMLElement){
-		allSites[0].Title = element.Text
-	})
-	
+			collector.OnRequest(func(request *colly.Request) {
+				fmt.Println("Visiting", request.URL.String())
+			})
 
-	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		link := e.Request.AbsoluteURL(e.Attr("href"))
-		if link != "" {
-			allSites[0].Hyperlinks = append(allSites[0].Hyperlinks, link)
+			collector.OnResponse(func(response *colly.Response) {
+				if response.StatusCode != 200 {
+					fmt.Println(response.StatusCode)
+				}
+			})
+
+			collector.OnError(func(r *colly.Response, err error) {
+				fmt.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
+			})
+
+			var mum map[string][]string
+			mum = make(map[string][]string)
+			site := Site{
+				Title:      "",
+				Link:       "",
+				Hyperlinks: make([]string, 0),
 			}
-	 })
 
-	collector.OnError(func(response *colly.Response, err error) {
-		results <- -1
-	})
-	collector.Visit(link)
-	*lst = append(*lst, allSites[0])
-	results <- 0 
+			collector.OnHTML("p", func(element *colly.HTMLElement) {
+				mum[element.Name] = append(mum[element.Name], element.Text)
+				site.Link = (element.Request).URL.String()
+			})
+
+			collector.OnHTML("li", func(element *colly.HTMLElement) {
+				mum[element.Name] = append(mum[element.Name], element.Text)
+				site.Link = (element.Request).URL.String()
+			})
+
+			collector.OnHTML("article", func(element *colly.HTMLElement) {
+				mum[element.Name] = append(mum[element.Name], element.Text)
+				site.Link = (element.Request).URL.String()
+			})
+
+			collector.OnHTML("title", func(element *colly.HTMLElement) {
+				site.Title = element.Text
+			})
+
+			collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
+				link := e.Request.AbsoluteURL(e.Attr("href"))
+				if link != "" {
+					site.Hyperlinks = append(site.Hyperlinks, link)
+				}
+			})
+
+			collector.Visit(k)
+
+			allSites = append(allSites, site)
+
+			allSites[0].Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
+			lst <- allSites[0]
+			defer wg.Done()
+			done <- true
+		case <-ks:
+			return
+		}
+	}
+
 }
 
 func main() {
+	// Perform health-check
+	for {
+		_, err := http.Get("http://elasticsearch:9200")
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	// Elasticsearch server has started. The program begins
+
 	links, err := readLines("links.txt")
-    if err != nil {
-        log.Fatalf("readLines: %s", err)
-    }
-    var numJobs = len(links)
-    jobs := make(chan int, numJobs)
-    results := make(chan int, numJobs)
+	if err != nil {
+		log.Fatalf("readLines: %s", err)
+	}
 
-	var sites []Site
-	sites = make([]Site, 0)	
-    for w := 1; w <= numJobs; w++ {
-		go crawl(links[w-1], jobs, results,&sites)
-    }
+	// elastic connection
+	esClient := elasticConnect()
 
-    for j := 1; j <= numJobs; j++ {
-        jobs <- j
-    }
-    close(jobs)
+	insertIdxName := "t_english_sites24"
+	titleStr := "start index"
+	contentStr := "first content1"
+	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
 
-    for a := 1; a <= numJobs; a++ {
-        <-results
-    }
-	writeJSON(sites, "out.json")
+	indexLastId := indexGetLastId(esClient, insertIdxName)
 
+	indexLastIdInt, err := strconv.Atoi(indexLastId)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(-1)
+	}
+
+	indexLastIdInt += 1
+	fmt.Println("my indexLastId", indexLastIdInt)
+	// end elastic connection
+
+	//if false {
+	var numberOfJobs = len(links)
+	var wg sync.WaitGroup
+
+	sites := make(chan Site, 10)
+
+	killsignal := make(chan bool)
+
+	q := make(chan string)
+
+	done := make(chan bool)
+
+	numberOfWorkers := 2
+	for i := 0; i < numberOfWorkers; i++ {
+		go crawl(sites, q, done, killsignal, &wg)
+		// go worker(q, i, done, killsignal)
+	}
+
+	for j := 0; j < numberOfJobs; j++ {
+		go func(j int) {
+			wg.Add(1)
+			q <- links[j]
+		}(j)
+	}
+
+	for c := 0; c < numberOfJobs; c++ {
+		<-done
+	}
+
+	close(killsignal)
+	wg.Wait()
+
+	close(sites)
+
+	//time.Sleep(1)
+	//crawl(links[numJobs-1], jobs, results, &sites)
+
+	//writeJSON(sites, "out.json")
+
+	// write to elastic
+	allSites := make([]Site, 0)
+	for msg := range sites {
+		allSites = append(allSites, msg)
+	}
+	elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
+	//}
 }
-
