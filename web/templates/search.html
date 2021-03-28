@@ -30,7 +30,7 @@
   <main>
     <p class="meta-data"> Kількість результатів: {{ data.websites|length }}</p>
     <ul class="content">
-      {% for website in data.websites %}
+      {% for website in data.websites[:10] %}
        <li>
         <span>{{ website.link[:40] }}</span>
         <a href="{{ website.link }}">
