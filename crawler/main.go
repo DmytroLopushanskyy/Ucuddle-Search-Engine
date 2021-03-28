@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+type responseLinks struct {
+	Links []string `json:"links"`
+}
+
 func writeJSON(data <-chan Site, writefile string) {
 	allSites := make([]Site, 0)
 	for msg := range data {
@@ -90,8 +94,8 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 				site.Link = (element.Request).URL.String()
 			})
 
-			collector.OnHTML("title", func(element *colly.HTMLElement) {
-				site.Title = element.Text
+			collector.OnHTML("html", func(e *colly.HTMLElement) {
+				site.Title = e.ChildAttr(`meta[property="og:title"]`, "content")
 			})
 
 			collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -119,23 +123,51 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 func main() {
 	// Perform health-check
 	for {
-		_, err := http.Get("http://elasticsearch:9200")
-		if err == nil {
+		_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
+		_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
+		fmt.Println("Waiting for Elasticsearch and Task Manager to be alive.")
+		if err_elastic == nil && err_manager == nil {
 			break
 		}
 		time.Sleep(time.Second)
 	}
-	// Elasticsearch server has started. The program begins
+	// Elasticsearch and Task Manager have started. The program begins
 
-	links, err := readLines("links.txt")
+	// ------ get links from TaskManager
+	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + "/task_manager/api/v1.0/get_links")
+	//resp, err := http.Get("https://jsonplaceholder.typicode.com/posts/1")
+
+	// check for response error
 	if err != nil {
-		log.Fatalf("readLines: %s", err)
+		log.Fatal(err)
 	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//fmt.Println(string(body))
+
+	res := responseLinks{}
+	json.Unmarshal(body, &res)
+
+	links := res.Links
+	fmt.Println("response Links  -- ", links)
+	// ------ end getting links from TaskManager
+
+	//fmt.Println("res  ", res)
+
+	//if false {
+	//links, err := readLines("links.txt")
+	//if err != nil {
+	//	log.Fatalf("readLines: %s", err)
+	//}
 
 	// elastic connection
 	esClient := elasticConnect()
 
-	insertIdxName := "t_english_sites24"
+	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
@@ -156,18 +188,14 @@ func main() {
 	var numberOfJobs = len(links)
 	var wg sync.WaitGroup
 
-	sites := make(chan Site, 10)
-
+	sites := make(chan Site, 50)
 	killsignal := make(chan bool)
-
 	q := make(chan string)
-
 	done := make(chan bool)
 
 	numberOfWorkers := 2
 	for i := 0; i < numberOfWorkers; i++ {
 		go crawl(sites, q, done, killsignal, &wg)
-		// go worker(q, i, done, killsignal)
 	}
 
 	for j := 0; j < numberOfJobs; j++ {
@@ -188,7 +216,6 @@ func main() {
 
 	//time.Sleep(1)
 	//crawl(links[numJobs-1], jobs, results, &sites)
-
 	//writeJSON(sites, "out.json")
 
 	// write to elastic
