@@ -4,7 +4,8 @@ import os
 import jsonpickle
 from elasticsearch import Elasticsearch
 
-es = Elasticsearch([os.environ['ELASTICSEARCH_URL']])
+es = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
+                    http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
 
 
 class MyEncoder(json.JSONEncoder):
@@ -20,7 +21,7 @@ def elastic_search(search_line):
                     "multi_match": {
                         "query": search_line,
                         "fuzziness": "AUTO",
-                        "minimum_should_match": "30%",
+                        "minimum_should_match": "100%",
                         "operator": "or",
                         "fields": {
                             "title^5",
@@ -32,8 +33,8 @@ def elastic_search(search_line):
         }
     }
     res = es.search(
-        index="t_english_sites24",
-        body=jsonpickle.encode(query, unpicklable=False)
+        index = os.environ['INDEX_ELASTIC_COLLECTED_DATA'],
+        body = jsonpickle.encode(query, unpicklable=False)
     )
     print("Got %d Hits:" % res['hits']['total']['value'])
     hits_list = []

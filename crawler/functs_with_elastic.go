@@ -36,7 +36,11 @@ func elasticConnect() *elasticsearch.Client {
 	//
 	// An `ELASTICSEARCH_URL` environment variable will be used when exported.
 	//
-	es, err := elasticsearch.NewDefaultClient()
+	cfg := elasticsearch.Config{
+		Username:  os.Getenv("Username"),
+		Password:  os.Getenv("Password"),
+	}
+	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Error creating the client: %s", err)
 	}
@@ -152,7 +156,7 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 
 func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 	indexLastId *int) {
-	fmt.Println("elasticInsert start")
+	fmt.Println("\n elasticInsert start")
 	var (
 		wg sync.WaitGroup
 	)
@@ -161,8 +165,6 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 	//
 	for i, site := range dataArr {
 		wg.Add(1)
-
-		fmt.Println(site.Title, " inserted")
 
 		go func(i int, site2 Site) {
 			defer wg.Done()
@@ -191,6 +193,8 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
 			}
 		}(i, site)
+
+		fmt.Println(site.Title, " inserted")
 	}
 	wg.Wait()
 
@@ -222,13 +226,12 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) string {
 
 	results := searchQuery(esClient, indexName, &buf)
 	//fmt.Println("result", results)
-	for i, result := range results {
-		//fmt.Println(i, result.Map()["_source"])
-		fmt.Println(i, result.Map()["_source"].Map()["title"])
-		fmt.Println("_id", result.Map()["_id"])
-		fmt.Println(result.Map()["_source"].Map()["added_at_time"])
-		fmt.Println("\n")
-	}
+	//for i, result := range results {
+	//	fmt.Println(i, result.Map()["_source"].Map()["title"])
+	//	fmt.Println("_id", result.Map()["_id"])
+	//	fmt.Println(result.Map()["_source"].Map()["added_at_time"])
+	//	fmt.Println("\n")
+	//}
 
 	lastIdx := results[0].Map()
 	//fmt.Println("results[0].Map()", results[0].Map())
