@@ -34,91 +34,128 @@ func writeJSON(data <-chan Site, writefile string) {
 
 }
 
-func readLines(path string) ([]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+func visit_link(link string) (site Site, failed error){
+	collector := colly.NewCollector(
 
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	return lines, scanner.Err()
+	)
+
+	collector.OnRequest(func(request *colly.Request) {
+		fmt.Println("Visiting", request.URL.String())
+	})
+	
+	collector.OnResponse(func(response *colly.Response) {
+		if response.StatusCode != 200 {
+			fmt.Println(response.StatusCode)
+		}
+	})
+
+	collector.OnError(func(response *colly.Response, err error) {
+		failed = err
+		if response.StatusCode != 200 && response.StatusCode != 0{
+			fmt.Println(response.StatusCode)
+		}
+	})
+
+	var mum map[string][]string
+	mum = make(map[string][]string)
+
+	collector.OnHTML("p", func(element *colly.HTMLElement) {
+		mum[element.Name] = append(mum[element.Name], element.Text)
+		site.Link = (element.Request).URL.String()
+	})
+
+	collector.OnHTML("li", func(element *colly.HTMLElement) {
+		mum[element.Name] = append(mum[element.Name], element.Text)
+		site.Link = (element.Request).URL.String()
+	})
+
+	collector.OnHTML("article", func(element *colly.HTMLElement) {
+		mum[element.Name] = append(mum[element.Name], element.Text)
+		site.Link = (element.Request).URL.String()
+	})
+
+	collector.OnHTML("head", func(element *colly.HTMLElement) {
+		link := element.Attr("title")
+		site.Title = site.Title + " " + link
+		site.Link = (element.Request).URL.String()
+		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
+		site.Title = site.Title + " " +  element.ChildText("title") + " " + element.DOM.Find("title").Text()
+	})
+
+	collector.OnHTML("title",func(element *colly.HTMLElement) {
+		site.Title = site.Title + " " + element.Text
+	})
+
+	collector.OnHTML("h1",func(element *colly.HTMLElement) {
+		site.Title = site.Title + " " + element.Text
+	})
+
+	collector.OnHTML("html", func(e *colly.HTMLElement) {
+		site.Title = site.Title + " " +  e.ChildAttr(`meta[property="og:title"]`, "content") + " " +  e.ChildText("title") + e.DOM.Find("title").Text()
+	})
+
+	// c.OnHTML("html", func(e *colly.HTMLElement) {
+	// 	if strings.EqualFold(e.ChildAttr(`meta[property="og:type"]`, "content"), "article") {
+	// 		// Find the emoji page title
+	// 		fmt.Println("Emoji: ", e.ChildText("article h1"))
+	// 		// Grab all the text from the emoji's description
+	// 		fmt.Println("Description: ", e.ChildText("article .description p"))
+	// 	}
+	// })
+		// 	site.Title
+		
+		// if strings.EqualFold(e.ChildAttr(`meta[property="og:title"]`, "content"), "article") {
+		// 	// Find the emoji page title
+		// 	fmt.Println("Emoji: ", e.ChildText("article h1"))
+		// 	// Grab all the text from the emoji's description
+		// 	fmt.Println("Description: ", e.ChildText("article .description p"))
+		// }
+	// })
+	
+	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		link := e.Request.AbsoluteURL(e.Attr("href"))
+		if link != "" {
+			site.Hyperlinks = append(site.Hyperlinks, link)
+		}
+	})
+	
+
+	collector.Visit(link)
+
+	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
+	
+	return 
 }
 
-func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.WaitGroup) {
+func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.WaitGroup, failedLinks chan map[string]string) {
 	for true {
 		select {
 		case k := <-queue:
-			allSites := make([]Site, 0)
-
-			collector := colly.NewCollector()
-
-			collector.OnRequest(func(request *colly.Request) {
-				fmt.Println("Visiting", request.URL.String())
-			})
-
-			collector.OnResponse(func(response *colly.Response) {
-				if response.StatusCode != 200 {
-					fmt.Println(response.StatusCode)
-				}
-			})
-
-			collector.OnError(func(r *colly.Response, err error) {
-				fmt.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
-			})
-
-			var mum map[string][]string
-			mum = make(map[string][]string)
-			site := Site{
-				Title:      "",
-				Link:       "",
-				Hyperlinks: make([]string, 0),
+			// site Side 
+			var site Site
+			var failed error 
+			site, failed = visit_link(k)
+			
+			if failed == nil{
+				lst <- site
 			}
-
-			collector.OnHTML("p", func(element *colly.HTMLElement) {
-				mum[element.Name] = append(mum[element.Name], element.Text)
-				site.Link = (element.Request).URL.String()
-			})
-
-			collector.OnHTML("li", func(element *colly.HTMLElement) {
-				mum[element.Name] = append(mum[element.Name], element.Text)
-				site.Link = (element.Request).URL.String()
-			})
-
-			collector.OnHTML("article", func(element *colly.HTMLElement) {
-				mum[element.Name] = append(mum[element.Name], element.Text)
-				site.Link = (element.Request).URL.String()
-			})
-
-			collector.OnHTML("html", func(e *colly.HTMLElement) {
-				site.Title = e.ChildAttr(`meta[property="og:title"]`, "content")
-			})
-
-			collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-				link := e.Request.AbsoluteURL(e.Attr("href"))
-				if link != "" {
-					site.Hyperlinks = append(site.Hyperlinks, link)
-				}
-			})
-
-			collector.Visit(k)
-
-			allSites = append(allSites, site)
-
-			allSites[0].Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
-			lst <- allSites[0]
-			defer wg.Done()
+			
 			done <- true
+			if failed != nil{
+				// fmt.Println()
+				m := make(map[string]string)
+				m["link"] = k
+				m["error"] = failed.Error()
+				failedLinks <- m
+			}
+			defer wg.Done()
 		case <-ks:
 			return
 		}
 	}
 
 }
+
 
 func main() {
 	// Perform health-check
@@ -188,31 +225,51 @@ func main() {
 	var numberOfJobs = len(links)
 	var wg sync.WaitGroup
 
-	sites := make(chan Site, 50)
+	sites := make(chan Site, len(links)+ 1)
+	failedLinks := make(chan map[string]string ,len(links)+ 1)
+
+
 	killsignal := make(chan bool)
-	q := make(chan string)
+
+	queue := make(chan string)
+
 	done := make(chan bool)
 
-	numberOfWorkers := 2
+	numberOfWorkers := 20
 	for i := 0; i < numberOfWorkers; i++ {
-		go crawl(sites, q, done, killsignal, &wg)
+		go crawl(sites, queue, done, killsignal, &wg, failedLinks)
 	}
 
 	for j := 0; j < numberOfJobs; j++ {
+		
+		// select {
+		// case k:= queue<-
+		// }
 		go func(j int) {
 			wg.Add(1)
-			q <- links[j]
+			if !strings.Contains(links[j], "https://"){
+				queue <- "https://" + links[j]
+			}else{
+				queue <- links[j]
+			}
+			
 		}(j)
 	}
 
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
+		// <-failedLinks
 	}
 
 	close(killsignal)
+
+	
 	wg.Wait()
+	// close(failedLinks)
 
 	close(sites)
+	
+	close(failedLinks)
 
 	//time.Sleep(1)
 	//crawl(links[numJobs-1], jobs, results, &sites)
