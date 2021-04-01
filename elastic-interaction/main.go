@@ -240,7 +240,6 @@ func main() {
 
 	// TODO: how
 	// to read line from user without \n with normal construction
-
 	fmt.Println("Application started")
 
 	// Before this module execution, run elasticsearch and kibana servers on your computer
