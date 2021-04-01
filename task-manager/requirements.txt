@@ -1,4 +1,0 @@
-flask
-jsonpickle
-elasticsearch
-gunicorn
