@@ -8,8 +8,11 @@ from elasticsearch import Elasticsearch
 
 class TaskManager:
     def __init__(self):
+        print("os.environ['ELASTICSEARCH_URL']]", os.environ['ELASTICSEARCH_URL'])
+
         self.es_client = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
-                            http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
+                                        http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
+
         # self.es_client = Elasticsearch()
 
     def create_new_index(self, index_name):

@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -37,8 +38,8 @@ func elasticConnect() *elasticsearch.Client {
 	// An `ELASTICSEARCH_URL` environment variable will be used when exported.
 	//
 	cfg := elasticsearch.Config{
-		Username:  os.Getenv("Username"),
-		Password:  os.Getenv("Password"),
+		Username: os.Getenv("Username"),
+		Password: os.Getenv("Password"),
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
@@ -182,10 +183,34 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 			*indexLastId++
 
 			// Perform the request with the client.
-			res, err := req.Do(context.Background(), es)
+			var res *esapi.Response
+			var err error
 
-			if err != nil {
-				log.Fatalf("Error getting response: %s", err)
+			waitResponseTime := 0
+
+			for i := 0; i < 5; i++ {
+				time.Sleep(time.Duration(waitResponseTime) * time.Second)
+
+				//if i == 4 {
+				res, err = req.Do(context.Background(), es)
+				//} else {
+				//	err = errors.New("test error")
+				//}
+
+				if err != nil {
+					fmt.Println("elasticInsert(): Error getting response (iteration ", i+1, "): ", err)
+				} else {
+					break
+				}
+				waitResponseTime = int(math.Exp(float64(i + 1)))
+			}
+
+			if err == nil {
+				if os.Getenv("DEBUG") == "true" {
+					log.Println("!!! Result successful response in elasticInsert()")
+				}
+			} else {
+				log.Println("!!! As result there is error response in elasticInsert()")
 			}
 			defer res.Body.Close()
 
@@ -194,7 +219,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 			}
 		}(i, site)
 
-		fmt.Println(site.Title, " inserted")
+		//fmt.Println(site.Title, " inserted")
 	}
 	wg.Wait()
 
@@ -243,16 +268,33 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	//
 
 	// Perform the search request.
-	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
-		es.Search.WithIndex(searchStrIdx),
-		es.Search.WithBody(queryBuf),
-		es.Search.WithTrackTotalHits(true),
-		es.Search.WithPretty(),
-	)
+	var res *esapi.Response
+	var err error
 
-	if err != nil {
-		log.Fatalf("Error getting response: %s", err)
+	waitResponseTime := 0
+
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Duration(waitResponseTime) * time.Second)
+		res, err = es.Search(
+			es.Search.WithContext(context.Background()),
+			es.Search.WithIndex(searchStrIdx),
+			es.Search.WithBody(queryBuf),
+			es.Search.WithTrackTotalHits(true),
+			es.Search.WithPretty(),
+		)
+
+		if err != nil {
+			fmt.Println("searchQuery(): Error getting response (iteration ", i+1, "): ", err)
+		} else {
+			break
+		}
+		waitResponseTime = int(math.Exp(float64(i + 1)))
+	}
+
+	if err == nil {
+		log.Println("!!! Successful response in searchQuery")
+	} else {
+		log.Println("Result error getting response in searchQuery: ", err)
 	}
 	defer res.Body.Close()
 
