@@ -34,9 +34,20 @@ func writeJSON(data <-chan Site, writefile string) {
 
 }
 
-func visit_link(link string) (site Site, failed error){
-	collector := colly.NewCollector(
+func Find(slice []string, val string) (int, bool) {
+    for i, item := range slice {
+        if item == val {
+            return i, true
+        }
+    }
+    return -1, false
+}
 
+func visit_link(lst chan<- Site, link string, visited *[]string) (failed error){
+	var site Site
+	collector := colly.NewCollector(
+		colly.AllowedDomains("https://organexpressions.com","organexpressions.com", "https://www.organexpressions.com", "www.organexpressions.com",
+							 "https://oneessencehealing.com","oneessencehealing.com", "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
 	)
 
 	collector.OnRequest(func(request *colly.Request) {
@@ -93,6 +104,14 @@ func visit_link(link string) (site Site, failed error){
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
 		site.Title = site.Title + " " +  e.ChildAttr(`meta[property="og:title"]`, "content") + " " +  e.ChildText("title") + e.DOM.Find("title").Text()
 	})
+	
+	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		link := e.Request.AbsoluteURL(e.Attr("href"))
+		if link != "" {
+			site.Hyperlinks = append(site.Hyperlinks, link)
+		}
+	})
+	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
 
 	// c.OnHTML("html", func(e *colly.HTMLElement) {
 	// 	if strings.EqualFold(e.ChildAttr(`meta[property="og:type"]`, "content"), "article") {
@@ -111,19 +130,33 @@ func visit_link(link string) (site Site, failed error){
 		// 	fmt.Println("Description: ", e.ChildText("article .description p"))
 		// }
 	// })
+
+	_, found := Find(*visited, link)
+    if !found {
+		*visited = append(*visited, link)
+		collector.Visit(link)
+    }
 	
-	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		link := e.Request.AbsoluteURL(e.Attr("href"))
-		if link != "" {
-			site.Hyperlinks = append(site.Hyperlinks, link)
+	
+	if site.Link == ""{
+		return 
+	}
+
+	L:
+	for true {
+		select {
+		case lst <- site: 
+			break L
+		default:
+			
 		}
-	})
-	
+	}
 
-	collector.Visit(link)
-
-	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
 	
+	for _, s := range site.Hyperlinks{
+		visit_link(lst, s, visited)
+	}
+
 	return 
 }
 
@@ -132,12 +165,14 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 		select {
 		case k := <-queue:
 			// site Side 
-			var site Site
+			
 			var failed error 
-			site, failed = visit_link(k)
+
+			visited := make([]string, 0)
+			failed = visit_link(lst, k, &visited)
 			
 			if failed == nil{
-				lst <- site
+				
 			}
 			
 			done <- true
@@ -148,6 +183,7 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 				m["error"] = failed.Error()
 				failedLinks <- m
 			}
+
 			defer wg.Done()
 		case <-ks:
 			return
@@ -155,7 +191,6 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 	}
 
 }
-
 
 func main() {
 	// Perform health-check
@@ -224,18 +259,37 @@ func main() {
 	//if false {
 	var numberOfJobs = len(links)
 	var wg sync.WaitGroup
-
+	
+	sliceSites := make([]Site, 0)
 	sites := make(chan Site, len(links)+ 1)
-	failedLinks := make(chan map[string]string ,len(links)+ 1)
 
+
+	failedLinks := make(chan map[string]string ,len(links)+ 1)	
 
 	killsignal := make(chan bool)
+
+	numberOfWritingCrawlers := 2
+	for i := 0; i < numberOfWritingCrawlers; i++ {
+	go func(killsignal chan bool, sliceSites *[]Site, sites <-chan Site){
+		F:
+		for true{
+			select{
+			case  l := <-sites:
+				*sliceSites = append(*sliceSites, l)
+				// fmt.Println(len(*sliceSites))
+				// fmt.Println(sliceSites[0].Link)
+			case <-killsignal:
+				break F
+			}
+		}
+	}(killsignal, &sliceSites, sites)
+	}
 
 	queue := make(chan string)
 
 	done := make(chan bool)
 
-	numberOfWorkers := 20
+	numberOfWorkers := 2
 	for i := 0; i < numberOfWorkers; i++ {
 		go crawl(sites, queue, done, killsignal, &wg, failedLinks)
 	}
