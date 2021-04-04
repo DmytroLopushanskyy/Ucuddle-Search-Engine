@@ -78,7 +78,7 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error){
 	var site Site
 	collector := colly.NewCollector(
 		colly.AllowedDomains("https://organexpressions.com","organexpressions.com", "https://www.organexpressions.com", "www.organexpressions.com",
-							 "https://organewsm.com","organewsm.com", "https://www.organewsm.com", "www.organewsm.com"),
+							 "https://oneessencehealing.com","oneessencehealing.com", "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
 	)
 
 	collector.OnRequest(func(request *colly.Request) {
@@ -240,6 +240,8 @@ func main() {
 
 	killsignal := make(chan bool)
 
+	numberOfWritingCrawlers := 2
+	for i := 0; i < numberOfWritingCrawlers; i++ {
 	go func(killsignal chan bool, sliceSites *[]Site, sites <-chan Site){
 		F:
 		for true{
@@ -253,6 +255,7 @@ func main() {
 			}
 		}
 	}(killsignal, &sliceSites, sites)
+	}
 
 	queue := make(chan string)
 
