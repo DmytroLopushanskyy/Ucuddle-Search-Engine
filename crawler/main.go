@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	//"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/gocolly/colly"
@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	//"time"
 )
 
 type responseLinks struct {
@@ -35,25 +36,29 @@ func writeJSON(data <-chan Site, writefile string) {
 }
 
 func Find(slice []string, val string) (int, bool) {
-    for i, item := range slice {
-        if item == val {
-            return i, true
-        }
-    }
-    return -1, false
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
 }
 
-func visit_link(lst chan<- Site, link string, visited *[]string) (failed error){
+func visit_link(lst chan<- Site, link string, visited *[]string) (failed error) {
 	var site Site
-	collector := colly.NewCollector(
-		colly.AllowedDomains("https://organexpressions.com","organexpressions.com", "https://www.organexpressions.com", "www.organexpressions.com",
-							 "https://oneessencehealing.com","oneessencehealing.com", "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
-	)
+	//collector := colly.NewCollector(
+	//	colly.AllowedDomains("https://organexpressions.com","organexpressions.com",
+	//		"https://www.organexpressions.com", "www.organexpressions.com",
+	//		 "https://oneessencehealing.com","oneessencehealing.com",
+	//		 "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
+	//)
+
+	collector := colly.NewCollector()
 
 	collector.OnRequest(func(request *colly.Request) {
 		fmt.Println("Visiting", request.URL.String())
 	})
-	
+
 	collector.OnResponse(func(response *colly.Response) {
 		if response.StatusCode != 200 {
 			fmt.Println(response.StatusCode)
@@ -62,7 +67,7 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error){
 
 	collector.OnError(func(response *colly.Response, err error) {
 		failed = err
-		if response.StatusCode != 200 && response.StatusCode != 0{
+		if response.StatusCode != 200 && response.StatusCode != 0 {
 			fmt.Println(response.StatusCode)
 		}
 	})
@@ -90,21 +95,21 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error){
 		site.Title = site.Title + " " + link
 		site.Link = (element.Request).URL.String()
 		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
-		site.Title = site.Title + " " +  element.ChildText("title") + " " + element.DOM.Find("title").Text()
+		site.Title = site.Title + " " + element.ChildText("title") + " " + element.DOM.Find("title").Text()
 	})
 
-	collector.OnHTML("title",func(element *colly.HTMLElement) {
+	collector.OnHTML("title", func(element *colly.HTMLElement) {
 		site.Title = site.Title + " " + element.Text
 	})
 
-	collector.OnHTML("h1",func(element *colly.HTMLElement) {
+	collector.OnHTML("h1", func(element *colly.HTMLElement) {
 		site.Title = site.Title + " " + element.Text
 	})
 
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
-		site.Title = site.Title + " " +  e.ChildAttr(`meta[property="og:title"]`, "content") + " " +  e.ChildText("title") + e.DOM.Find("title").Text()
+		site.Title = site.Title + " " + e.ChildAttr(`meta[property="og:title"]`, "content") + " " + e.ChildText("title") + e.DOM.Find("title").Text()
 	})
-	
+
 	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		link := e.Request.AbsoluteURL(e.Attr("href"))
 		if link != "" {
@@ -121,62 +126,64 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error){
 	// 		fmt.Println("Description: ", e.ChildText("article .description p"))
 	// 	}
 	// })
-		// 	site.Title
-		
-		// if strings.EqualFold(e.ChildAttr(`meta[property="og:title"]`, "content"), "article") {
-		// 	// Find the emoji page title
-		// 	fmt.Println("Emoji: ", e.ChildText("article h1"))
-		// 	// Grab all the text from the emoji's description
-		// 	fmt.Println("Description: ", e.ChildText("article .description p"))
-		// }
+	// 	site.Title
+
+	// if strings.EqualFold(e.ChildAttr(`meta[property="og:title"]`, "content"), "article") {
+	// 	// Find the emoji page title
+	// 	fmt.Println("Emoji: ", e.ChildText("article h1"))
+	// 	// Grab all the text from the emoji's description
+	// 	fmt.Println("Description: ", e.ChildText("article .description p"))
+	// }
 	// })
 
 	_, found := Find(*visited, link)
-    if !found {
+	if !found {
 		*visited = append(*visited, link)
 		collector.Visit(link)
-    }
-	
-	
-	if site.Link == ""{
-		return 
 	}
 
-	L:
+	if site.Link == "" {
+		return
+	}
+
+L:
 	for true {
 		select {
-		case lst <- site: 
+		case lst <- site:
 			break L
 		default:
-			
+
 		}
 	}
 
-	
-	for _, s := range site.Hyperlinks{
+	for idx, s := range site.Hyperlinks {
+		if idx == 4 {
+			break
+		}
+
 		visit_link(lst, s, visited)
 	}
 
-	return 
+	return
 }
 
 func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.WaitGroup, failedLinks chan map[string]string) {
 	for true {
 		select {
 		case k := <-queue:
-			// site Side 
-			
-			var failed error 
+			// site Side
+
+			var failed error
 
 			visited := make([]string, 0)
 			failed = visit_link(lst, k, &visited)
-			
-			if failed == nil{
-				
+
+			if failed == nil {
+
 			}
-			
+
 			done <- true
-			if failed != nil{
+			if failed != nil {
 				// fmt.Println()
 				m := make(map[string]string)
 				m["link"] = k
@@ -207,6 +214,9 @@ func main() {
 
 	// ------ get links from TaskManager
 	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + "/task_manager/api/v1.0/get_links")
+
+	// used for testing
+	//resp, err := http.Get("http://localhost:5000" + "/task_manager/api/v1.0/get_links")
 	//resp, err := http.Get("https://jsonplaceholder.typicode.com/posts/1")
 
 	// check for response error
@@ -219,7 +229,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Println(string(body))
 
 	res := responseLinks{}
 	json.Unmarshal(body, &res)
@@ -228,22 +237,16 @@ func main() {
 	fmt.Println("response Links  -- ", links)
 	// ------ end getting links from TaskManager
 
-	//fmt.Println("res  ", res)
-
-	//if false {
-	//links, err := readLines("links.txt")
-	//if err != nil {
-	//	log.Fatalf("readLines: %s", err)
-	//}
-
 	// elastic connection
 	esClient := elasticConnect()
 
 	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
+	// used for testing
+	//insertIdxName := "t_english_sites-a1"
+
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
-
 	indexLastId := indexGetLastId(esClient, insertIdxName)
 
 	indexLastIdInt, err := strconv.Atoi(indexLastId)
@@ -256,33 +259,39 @@ func main() {
 	fmt.Println("my indexLastId", indexLastIdInt)
 	// end elastic connection
 
+	// used for testing
 	//if false {
 	var numberOfJobs = len(links)
+
+	// TODO: delete after testing
+	//var numberOfJobs = 1
+
 	var wg sync.WaitGroup
-	
+
 	sliceSites := make([]Site, 0)
-	sites := make(chan Site, len(links)+ 1)
+	sites := make(chan Site, len(links)+1)
 
-
-	failedLinks := make(chan map[string]string ,len(links)+ 1)	
+	failedLinks := make(chan map[string]string, len(links)+1)
 
 	killsignal := make(chan bool)
 
 	numberOfWritingCrawlers := 2
 	for i := 0; i < numberOfWritingCrawlers; i++ {
-	go func(killsignal chan bool, sliceSites *[]Site, sites <-chan Site){
+		go func(killsignal chan bool, sliceSites *[]Site, sites <-chan Site) {
 		F:
-		for true{
-			select{
-			case  l := <-sites:
-				*sliceSites = append(*sliceSites, l)
-				// fmt.Println(len(*sliceSites))
-				// fmt.Println(sliceSites[0].Link)
-			case <-killsignal:
-				break F
+			for true {
+				select {
+				case l := <-sites:
+					*sliceSites = append(*sliceSites, l)
+					elasticInsert(esClient, *sliceSites, &insertIdxName, &indexLastIdInt)
+
+					// fmt.Println(len(*sliceSites))
+					// fmt.Println(sliceSites[0].Link)
+				case <-killsignal:
+					break F
+				}
 			}
-		}
-	}(killsignal, &sliceSites, sites)
+		}(killsignal, &sliceSites, sites)
 	}
 
 	queue := make(chan string)
@@ -295,18 +304,17 @@ func main() {
 	}
 
 	for j := 0; j < numberOfJobs; j++ {
-		
 		// select {
 		// case k:= queue<-
 		// }
 		go func(j int) {
 			wg.Add(1)
-			if !strings.Contains(links[j], "https://"){
+			if !strings.Contains(links[j], "https://") {
 				queue <- "https://" + links[j]
-			}else{
+			} else {
 				queue <- links[j]
 			}
-			
+
 		}(j)
 	}
 
@@ -317,23 +325,23 @@ func main() {
 
 	close(killsignal)
 
-	
 	wg.Wait()
 	// close(failedLinks)
 
 	close(sites)
-	
+
 	close(failedLinks)
 
+	// used for testing
 	//time.Sleep(1)
 	//crawl(links[numJobs-1], jobs, results, &sites)
 	//writeJSON(sites, "out.json")
 
 	// write to elastic
-	allSites := make([]Site, 0)
-	for msg := range sites {
-		allSites = append(allSites, msg)
-	}
-	elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
+	//allSites := make([]Site, 0)
+	//for msg := range sites {
+	//	allSites = append(allSites, msg)
+	//}
+	//elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
 	//}
 }

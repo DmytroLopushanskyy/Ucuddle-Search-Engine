@@ -37,8 +37,8 @@ func elasticConnect() *elasticsearch.Client {
 	// An `ELASTICSEARCH_URL` environment variable will be used when exported.
 	//
 	cfg := elasticsearch.Config{
-		Username:  os.Getenv("Username"),
-		Password:  os.Getenv("Password"),
+		Username: os.Getenv("Username"),
+		Password: os.Getenv("Password"),
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
@@ -198,6 +198,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 	}
 	wg.Wait()
 
+	dataArr = dataArr[:0]
 	log.Println(strings.Repeat("-", 37))
 }
 

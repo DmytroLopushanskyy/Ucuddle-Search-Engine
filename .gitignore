@@ -1,5 +1,12 @@
 /.idea
 elastic-interaction/buf.go
+
+# important files
+./crawlers-env.env
+./flask-env.env
+./doc_2021-03-28_16-51-38.crawlers-env
+./doc_2021-03-28_16-51-19.flask-env
+
 .DS_Store
 task-manager/test_functs.py
 ansible/hosts.ini
