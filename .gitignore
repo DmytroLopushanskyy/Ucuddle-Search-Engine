@@ -1,8 +1,10 @@
 /.idea
-elastic-interaction/buf.go
 .DS_Store
-task-manager/test_functs.py
-ansible/hosts.ini
 *.crawlers-env
 *.flask-env
 *.env
+
+elastic-interaction/buf.go
+task-manager/test_functs.py
+ansible/hosts.ini
+crawler/buf.go

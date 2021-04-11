@@ -11,10 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"sync"
-	//"time"
 )
 
 type responseLinks struct {
@@ -122,7 +120,6 @@ func visit_link(link string) (site Site, failed error) {
 	collector.Visit(link)
 
 	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
-
 	return
 }
 
@@ -199,7 +196,7 @@ func main() {
 	res := responseLinks{}
 	json.Unmarshal(body, &res)
 
-	links := res.Links
+	links := res.Links[:5]
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)
@@ -219,81 +216,81 @@ func main() {
 	esClient := elasticConnect()
 
 	// TODO: uncomment
-	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
-	//insertIdxName := "t_english_sites32"
+	//insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
+	insertIdxName := "t_english_sites-a16"
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
 
-	indexLastId := indexGetLastId(esClient, insertIdxName)
+	indexLastIdInt := indexGetLastId(esClient, insertIdxName)
 
-	indexLastIdInt, err := strconv.Atoi(indexLastId)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
+	//indexLastIdInt, err := strconv.Atoi(indexLastId)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	os.Exit(-1)
+	//}
 
 	indexLastIdInt += 1
 	fmt.Println("my indexLastId", indexLastIdInt)
 	// end elastic connection
 
-	//if false {
-	var numberOfJobs = len(links)
-	var wg sync.WaitGroup
+	if false {
+		var numberOfJobs = len(links)
+		var wg sync.WaitGroup
 
-	sites := make(chan Site, len(links)+1)
-	failedLinks := make(chan map[string]string, len(links)+1)
+		sites := make(chan Site, len(links)+1)
+		failedLinks := make(chan map[string]string, len(links)+1)
 
-	killsignal := make(chan bool)
+		killsignal := make(chan bool)
 
-	queue := make(chan string)
+		queue := make(chan string)
 
-	done := make(chan bool)
+		done := make(chan bool)
 
-	numberOfWorkers := 20
-	for i := 0; i < numberOfWorkers; i++ {
-		go crawl(sites, queue, done, killsignal, &wg, failedLinks)
+		numberOfWorkers := 20
+		for i := 0; i < numberOfWorkers; i++ {
+			go crawl(sites, queue, done, killsignal, &wg, failedLinks)
+		}
+
+		for j := 0; j < numberOfJobs; j++ {
+
+			// select {
+			// case k:= queue<-
+			// }
+			go func(j int) {
+				wg.Add(1)
+				if !strings.Contains(links[j], "https://") {
+					queue <- "https://" + links[j]
+				} else {
+					queue <- links[j]
+				}
+
+			}(j)
+		}
+
+		for c := 0; c < numberOfJobs; c++ {
+			<-done
+			// <-failedLinks
+		}
+
+		close(killsignal)
+
+		wg.Wait()
+		// close(failedLinks)
+
+		close(sites)
+
+		close(failedLinks)
+
+		//time.Sleep(1)
+		//crawl(links[numJobs-1], jobs, results, &sites)
+		//writeJSON(sites, "out.json")
+
+		// write to elastic
+		allSites := make([]Site, 0)
+		for msg := range sites {
+			allSites = append(allSites, msg)
+		}
+		elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
 	}
-
-	for j := 0; j < numberOfJobs; j++ {
-
-		// select {
-		// case k:= queue<-
-		// }
-		go func(j int) {
-			wg.Add(1)
-			if !strings.Contains(links[j], "https://") {
-				queue <- "https://" + links[j]
-			} else {
-				queue <- links[j]
-			}
-
-		}(j)
-	}
-
-	for c := 0; c < numberOfJobs; c++ {
-		<-done
-		// <-failedLinks
-	}
-
-	close(killsignal)
-
-	wg.Wait()
-	// close(failedLinks)
-
-	close(sites)
-
-	close(failedLinks)
-
-	//time.Sleep(1)
-	//crawl(links[numJobs-1], jobs, results, &sites)
-	//writeJSON(sites, "out.json")
-
-	// write to elastic
-	allSites := make([]Site, 0)
-	for msg := range sites {
-		allSites = append(allSites, msg)
-	}
-	elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
-	//}
 }
