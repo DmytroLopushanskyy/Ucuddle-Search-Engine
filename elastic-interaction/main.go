@@ -24,7 +24,7 @@ func elasticConnect() *elasticsearch.Client {
 		r map[string]interface{}
 	)
 
-	// Initialize a client with the default settings.
+	// Initialize a client with the default mapping.
 	//
 	// An `ELASTICSEARCH_URL` environment variable will be used when exported.
 	//
@@ -124,11 +124,12 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string,
 
 		"size": nLastRecords,
 
-		"sort": map[string]interface{}{
-			"site_id": map[string]interface{}{
-				"order": "desc",
-			},
-		},
+		// TODO
+		//"sort": map[string]interface{}{
+		//	"site_id": map[string]interface{}{
+		//		"order": "desc",
+		//	},
+		//},
 
 		//"track_total_hits": false,
 	}
@@ -138,7 +139,7 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string,
 	}
 
 	results := searchQuery(esClient, indexName, &buf)
-	//fmt.Println("result", results)
+	fmt.Println("result", results)
 	for i, result := range results {
 		fmt.Println(i, result.Map()["_source"].Map()["title"])
 		fmt.Println("_id", result.Map()["_id"])
@@ -178,7 +179,8 @@ func main() {
 
 	fmt.Println("Enter function number to execute: ")
 	functionNames := []string{"insert words", "search indexes", "delete indexes",
-		"get last id and print n last document titles in the index"}
+		"get last id and print n last document titles in the index",
+		"update mapping in index", "get index mapping"}
 	for i, funcName := range functionNames {
 		fmt.Println(i+1, " -- ", funcName)
 	}
@@ -243,8 +245,9 @@ func main() {
 		idStr = idStr[:len(idStr)-1]
 
 		deleting(esClient, idxName, idStr)
+
 	} else if input == "4" {
-		fmt.Println("Enter your index to get last document id and print n last document titles ")
+		fmt.Println("Enter your index to get last document id and print n last document titles")
 		reader := bufio.NewReader(os.Stdin)
 		idxName, _ := reader.ReadString('\n')
 		idxName = idxName[:len(idxName)-1]
@@ -257,5 +260,21 @@ func main() {
 
 		indexLastIdInt := indexGetLastId(esClient, idxName, nLastRecords)
 		fmt.Println("indexLastIdInt -- ", indexLastIdInt)
+
+	} else if input == "5" {
+		fmt.Println("Enter your index to update mapping")
+		reader := bufio.NewReader(os.Stdin)
+		idxName, _ := reader.ReadString('\n')
+		idxName = idxName[:len(idxName)-1]
+
+		updateIndexMapping(esClient, idxName)
+
+	} else if input == "6" {
+		fmt.Println("Enter your index to get mapping")
+		reader := bufio.NewReader(os.Stdin)
+		idxName, _ := reader.ReadString('\n')
+		idxName = idxName[:len(idxName)-1]
+
+		getIndexMapping(esClient, idxName)
 	}
 }

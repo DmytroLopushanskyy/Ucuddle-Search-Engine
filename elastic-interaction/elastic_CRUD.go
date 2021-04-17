@@ -13,6 +13,7 @@ import (
 	"sync"
 )
 
+
 func indexing(es *elasticsearch.Client, dataArr []string, saveStrIdx string) {
 	var (
 		wg sync.WaitGroup
