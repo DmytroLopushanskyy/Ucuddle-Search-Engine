@@ -1,9 +1,6 @@
-import math
-import time
 from datetime import datetime
 import os
 import logging
-from typing import List, Any
 
 import jsonpickle
 from elasticsearch import Elasticsearch
@@ -11,11 +8,8 @@ from elasticsearch import Elasticsearch
 
 class TaskManager:
     def __init__(self):
-        print("os.environ['ELASTICSEARCH_URL']]", os.environ['ELASTICSEARCH_URL'])
-
         self.es_client = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
-                                        http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
-
+                            http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
         # self.es_client = Elasticsearch()
 
     def create_new_index(self, index_name):
@@ -28,6 +22,9 @@ class TaskManager:
 
         logging.debug("Elastic response for creating new index: ", res)
         return 200
+
+    # def add_new_data_in_index(self, index_name, data):
+    #     self.es_client.index(index=index_name, id=42, body=data)
 
     def retrieve_links(self, num_links):
         query = {
@@ -43,32 +40,16 @@ class TaskManager:
                 }
             }
         }
+        res = self.es_client.search(
+            index=os.environ['INDEX_ELASTIC_LINKS'],
+            body=jsonpickle.encode(query, unpicklable=False)
+        )
 
-        waiting_response_time = 0
+        logging.debug("res", res)
         links = dict()
-        for i in range(5):
-            time.sleep(waiting_response_time)
-            res = self.es_client.search(
-                index=os.environ['INDEX_ELASTIC_LINKS'],
-                body=jsonpickle.encode(query, unpicklable=False)
-            )
-
-            if res['timed_out'] != False or res['_shards']['failed'] != 0 or \
-                    res.get('status', 0) != 0:
-                print("retrieve_links(): response error from Elasticsearch -- ")
-                print("waiting_response_time -- ", waiting_response_time)
-                print("res['_shards']['failed'] -- ", res['_shards']['failed'])
-                print("res['timed_out'] -- ", res['timed_out'])
-                print("res.get('status', 0) -- ", res.get('status', 0))
-
-            else:
-                links["links"] = []
-                for hit in res["hits"]["hits"]:
-                    links["links"].append(hit["_source"]["link"])
-
-                break
-
-            waiting_response_time = math.exp(i + 1)
+        links["links"] = []
+        for hit in res["hits"]["hits"]:
+            links["links"].append(hit["_source"]["link"])
 
         return links
 
@@ -76,40 +57,13 @@ class TaskManager:
         # TODO
         last_link_id = 0
         last_link_id += 1
-        missed_links = []
         for link in links_lst:
-            waiting_response_time = 0
+            res = self.es_client.index(
+                index=index_name, id=last_link_id,
+                body={"link": link, "added_at_time": datetime.now()}
+            )
 
-            for i in range(5):
-                time.sleep(waiting_response_time)
-                res = self.es_client.index(
-                    index=index_name, id=last_link_id,
-                    body={"link": link, "added_at_time": datetime.now()}
-                )
+            print("es_client insert link response -- ", res["result"])
+            last_link_id += 1
 
-                if res['result'] != 'created' or res['_shards']['failed'] != 0 or \
-                        res.get('status', 0) != 0:
-                    print("add_new_links(): response error from Elasticsearch -- ")
-                    print("waiting_response_time -- ", waiting_response_time)
-                    print("res['_shards']['failed'] -- ", res['_shards']['failed'])
-                    print("res['timed_out'] -- ", res['timed_out'])
-                    print("res.get('status', 0) -- ", res.get('status', 0))
-
-                    if i == 4:
-                        missed_links.append(link)
-
-                else:
-                    print("es_client insert link response -- ", res["result"])
-                    last_link_id += 1
-
-                    break
-
-                waiting_response_time = math.exp(i + 1)
-
-        if len(missed_links) != 0:
-            print("add_new_links() Error: next links was not added")
-            for link in missed_links:
-                print(link)
-            print()
-        else:
-            print("All links were successfully added !!!")
+        print("All links were successfully added !!!")

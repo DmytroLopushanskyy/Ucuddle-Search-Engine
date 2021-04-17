@@ -24,7 +24,6 @@ def check_elastic_search_status():
     logging.debug("Check ES Status")
     index_elastic_links = os.environ["INDEX_ELASTIC_LINKS"]
     logging.debug("index_elastic_links", index_elastic_links)
-
     res_status = task_manager.create_new_index(index_elastic_links)
     logging.debug("res_status", res_status)
     if res_status != 400:
@@ -56,5 +55,4 @@ def get_links():
 
 
 if __name__ == '__main__':
-    check_elastic_search_status()
     app.run(debug=True)

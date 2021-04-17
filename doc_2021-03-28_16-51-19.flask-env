@@ -1,0 +1,9 @@
+DEBUG=False
+ELASTICSEARCH_URL="93.75.221.93:9200"
+TASK_MANAGER_URL="http://task-manager:5000"
+USERNAME="ucuddle"
+PASSWORD="ucuddleCloud123)"
+INDEX_ELASTIC_COLLECTED_DATA="t_english_sites32"
+INDEX_ELASTIC_LINKS="t_links_for_crawlers32"
+NUM_LINKS_PER_CRAWLER=50
+

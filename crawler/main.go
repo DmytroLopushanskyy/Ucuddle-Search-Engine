@@ -10,9 +10,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
+	//"strconv"
 	"strings"
 	"sync"
+	//"time"
+	"path"
 )
 
 type responseLinks struct {
@@ -34,7 +36,24 @@ func writeJSON(data <-chan Site, writefile string) {
 
 }
 
-func visit_link(link string) (site Site, failed error) {
+func Find(slice []string, val string) (int, bool) {
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+func visit_link(lst chan<- Site, link string, visited *[]string) (failed error) {
+	var site Site
+	//collector := colly.NewCollector(
+	//	colly.AllowedDomains("https://organexpressions.com","organexpressions.com",
+	//		"https://www.organexpressions.com", "www.organexpressions.com",
+	//		 "https://oneessencehealing.com","oneessencehealing.com",
+	//		 "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
+	//)
+
 	collector := colly.NewCollector()
 
 	collector.OnRequest(func(request *colly.Request) {
@@ -92,6 +111,14 @@ func visit_link(link string) (site Site, failed error) {
 		site.Title = site.Title + " " + e.ChildAttr(`meta[property="og:title"]`, "content") + " " + e.ChildText("title") + e.DOM.Find("title").Text()
 	})
 
+	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		link := e.Request.AbsoluteURL(e.Attr("href"))
+		if link != "" {
+			site.Hyperlinks = append(site.Hyperlinks, link)
+		}
+	})
+	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
+
 	// c.OnHTML("html", func(e *colly.HTMLElement) {
 	// 	if strings.EqualFold(e.ChildAttr(`meta[property="og:type"]`, "content"), "article") {
 	// 		// Find the emoji page title
@@ -110,16 +137,30 @@ func visit_link(link string) (site Site, failed error) {
 	// }
 	// })
 
-	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		link := e.Request.AbsoluteURL(e.Attr("href"))
-		if link != "" {
-			site.Hyperlinks = append(site.Hyperlinks, link)
+	_, found := Find(*visited, link)
+	if !found {
+		*visited = append(*visited, link)
+		collector.Visit(link)
+	}
+
+	if site.Link == "" {
+		return
+	}
+
+L:
+	for true {
+		select {
+		case lst <- site:
+			break L
+		default:
+
 		}
-	})
+	}
 
-	collector.Visit(link)
 
-	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
+	for _, s := range site.Hyperlinks {
+		visit_link(lst, s, visited)
+	}
 	return
 }
 
@@ -128,22 +169,24 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 		select {
 		case k := <-queue:
 			// site Side
-			var site Site
+
 			var failed error
-			site, failed = visit_link(k)
+
+			visited := make([]string, 0)
+			failed = visit_link(lst, k, &visited)
 
 			if failed == nil {
-				lst <- site
+
 			}
 
 			done <- true
 			if failed != nil {
-				// fmt.Println()
 				m := make(map[string]string)
 				m["link"] = k
 				m["error"] = failed.Error()
 				failedLinks <- m
 			}
+
 			defer wg.Done()
 		case <-ks:
 			return
@@ -154,7 +197,6 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 
 func main() {
 	// Perform health-check
-
 	//for {
 	//	_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
 	//	_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
@@ -164,11 +206,7 @@ func main() {
 	//	}
 	//	time.Sleep(time.Second)
 	//}
-
 	// Elasticsearch and Task Manager have started. The program begins
-
-	//log.Println("log.Println " + os.Getenv("TASK_MANAGER_URL"))
-	//log.Println(os.Environ())
 
 	// load .env file
 	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
@@ -178,8 +216,6 @@ func main() {
 
 	// ------ get links from TaskManager
 	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + "/task_manager/api/v1.0/get_links")
-	//resp, err := http.Get("http://localhost:5000" + "/task_manager/api/v1.0/get_links")
-	//resp, err := http.Get("https://jsonplaceholder.typicode.com/posts/1")
 
 	// check for response error
 	if err != nil {
@@ -191,12 +227,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//fmt.Println(string(body))
 
 	res := responseLinks{}
 	json.Unmarshal(body, &res)
 
-	links := res.Links[:5]
+	links := res.Links
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)
@@ -204,16 +239,9 @@ func main() {
 
 	// ------ end getting links from TaskManager
 
-	//fmt.Println("res  ", res)
-
-	//if false {
-	//links, err := readLines("links.txt")
-	//if err != nil {
-	//	log.Fatalf("readLines: %s", err)
-	//}
-
 	// elastic connection
 	esClient := elasticConnect()
+
 
 	// TODO: uncomment
 	//insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
@@ -224,73 +252,84 @@ func main() {
 
 	indexLastIdInt := indexGetLastId(esClient, insertIdxName)
 
-	//indexLastIdInt, err := strconv.Atoi(indexLastId)
-	//if err != nil {
-	//	fmt.Println(err)
-	//	os.Exit(-1)
-	//}
-
 	indexLastIdInt += 1
 	fmt.Println("my indexLastId", indexLastIdInt)
 	// end elastic connection
 
-	if false {
-		var numberOfJobs = len(links)
-		var wg sync.WaitGroup
+	// used for testing
+	//if false {
+	var numberOfJobs = len(links)
 
-		sites := make(chan Site, len(links)+1)
-		failedLinks := make(chan map[string]string, len(links)+1)
+	var wg sync.WaitGroup
 
-		killsignal := make(chan bool)
+	sliceSites := make([]Site, 0)
+	sites := make(chan Site, len(links)+1)
 
-		queue := make(chan string)
+	failedLinks := make(chan map[string]string, len(links)+1)
 
-		done := make(chan bool)
+	killsignal := make(chan bool)
 
-		numberOfWorkers := 20
-		for i := 0; i < numberOfWorkers; i++ {
-			go crawl(sites, queue, done, killsignal, &wg, failedLinks)
-		}
+	numberOfWritingCrawlers := 2
+	for i := 0; i < numberOfWritingCrawlers; i++ {
+		go func(killsignal chan bool, sliceSites *[]Site, sites <-chan Site) {
+		F:
+			for true {
+				select {
+				case l := <-sites:
+					*sliceSites = append(*sliceSites, l)
+					elasticInsert(esClient, *sliceSites, &insertIdxName, &indexLastIdInt)
 
-		for j := 0; j < numberOfJobs; j++ {
-
-			// select {
-			// case k:= queue<-
-			// }
-			go func(j int) {
-				wg.Add(1)
-				if !strings.Contains(links[j], "https://") {
-					queue <- "https://" + links[j]
-				} else {
-					queue <- links[j]
+				case <-killsignal:
+					break F
 				}
-
-			}(j)
-		}
-
-		for c := 0; c < numberOfJobs; c++ {
-			<-done
-			// <-failedLinks
-		}
-
-		close(killsignal)
-
-		wg.Wait()
-		// close(failedLinks)
-
-		close(sites)
-
-		close(failedLinks)
-
-		//time.Sleep(1)
-		//crawl(links[numJobs-1], jobs, results, &sites)
-		//writeJSON(sites, "out.json")
-
-		// write to elastic
-		allSites := make([]Site, 0)
-		for msg := range sites {
-			allSites = append(allSites, msg)
-		}
-		elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
+			}
+		}(killsignal, &sliceSites, sites)
 	}
+
+	queue := make(chan string)
+
+	done := make(chan bool)
+
+	numberOfWorkers := 2
+	for i := 0; i < numberOfWorkers; i++ {
+		go crawl(sites, queue, done, killsignal, &wg, failedLinks)
+	}
+
+	for j := 0; j < numberOfJobs; j++ {
+		// select {
+		// case k:= queue<-
+		// }
+		go func(j int) {
+			wg.Add(1)
+			if !strings.Contains(links[j], "https://") {
+				queue <- "https://" + links[j]
+			} else {
+				queue <- links[j]
+			}
+
+		}(j)
+	}
+
+
+	for c := 0; c < numberOfJobs; c++ {
+		<-done
+		// <-failedLinks
+	}
+
+	close(killsignal)
+	wg.Wait()
+
+	close(sites)
+	close(failedLinks)
+
+	//time.Sleep(1)
+	//crawl(links[numJobs-1], jobs, results, &sites)
+	//writeJSON(sites, "out.json")
+
+	// write to elastic
+	allSites := make([]Site, 0)
+	for msg := range sites {
+		allSites = append(allSites, msg)
+	}
+	elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
 }

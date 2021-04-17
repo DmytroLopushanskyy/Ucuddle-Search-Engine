@@ -27,15 +27,10 @@ def search():
     query = request.args.get('query')
 
     websites = elastic_search(query)
-
     data = {
         "query": query,
         "websites": websites
     }
-
-    if len(websites) == 0:
-        return render_template('search_not_found.html', data=data)
-
     return render_template('search.html', data=data)
 
 
@@ -84,4 +79,4 @@ def more_links():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8000)
+    app.run(debug=True)

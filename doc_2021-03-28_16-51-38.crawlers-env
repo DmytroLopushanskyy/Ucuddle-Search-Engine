@@ -1,0 +1,5 @@
+ELASTICSEARCH_URL="http://93.75.221.93:9200"
+TASK_MANAGER_URL="http://task-manager:5000"
+INDEX_ELASTIC_COLLECTED_DATA="t_english_sites32"
+Username="ucuddle"
+Password="ucuddleCloud123)"

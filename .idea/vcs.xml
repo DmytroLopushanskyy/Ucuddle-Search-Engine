@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/crawler/home/sdk/go1.16/src/github.com/elastic/go-elasticsearch" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/crawler/sdk/go1.16/src/github.com/elastic/go-elasticsearch" vcs="Git" />
+  </component>
+</project>

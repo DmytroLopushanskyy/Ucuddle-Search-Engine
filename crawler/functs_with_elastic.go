@@ -9,7 +9,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -148,7 +147,10 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 		}
 
 		dataArr = append(dataArr, site)
-		fmt.Printf("%v", dataArr)
+
+		if os.Getenv("DEBUG") == "true" {
+			fmt.Printf("%v", dataArr)}
+
 
 		// TODO: exist
 		setIndexAnalyzer(es, idxName)
@@ -165,8 +167,6 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 		wg sync.WaitGroup
 	)
 
-	//general_time := time.Now().UTC()
-
 	// Index documents concurrently
 	//
 	for i, site := range dataArr {
@@ -179,14 +179,9 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 			*indexLastId++
 
 			site2.AddedAt = time.Now().UTC()
-			//general_time = general_time.Add(time.Nanosecond)
-			//site2.AddedAt = general_time
 
 			// Build the request body.
 			res2B, _ := json.Marshal(site2)
-
-			fmt.Println("indexLastId -- ", site2.SiteId, "\n strconv.FormatInt(int64(*indexLastId), 10) -- ",
-				strconv.FormatUint(site2.SiteId, 10))
 
 			// Set up the request object.
 			req := esapi.IndexRequest{
@@ -197,34 +192,10 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 			}
 
 			// Perform the request with the client.
-			var res *esapi.Response
-			var err error
+			res, err := req.Do(context.Background(), es)
 
-			waitResponseTime := 0
-
-			for i := 0; i < 5; i++ {
-				time.Sleep(time.Duration(waitResponseTime) * time.Second)
-
-				//if i == 4 {
-				res, err = req.Do(context.Background(), es)
-				//} else {
-				//	err = errors.New("test error")
-				//}
-
-				if err != nil {
-					fmt.Println("elasticInsert(): Error getting response (iteration ", i+1, "): ", err)
-				} else {
-					break
-				}
-				waitResponseTime = int(math.Exp(float64(i + 1)))
-			}
-
-			if err == nil {
-				if os.Getenv("DEBUG") == "true" {
-					log.Println("!!! Result successful response in elasticInsert()")
-				}
-			} else {
-				log.Println("!!! As result there is error response in elasticInsert()")
+			if err != nil {
+				log.Fatalf("Error getting response: %s", err)
 			}
 			defer res.Body.Close()
 
@@ -232,11 +203,12 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
 			}
 		}(i, site)
-
+		//
 		//fmt.Println(site.Title, " inserted")
 	}
 	wg.Wait()
 
+	dataArr = dataArr[:0]
 	log.Println(strings.Repeat("-", 37))
 }
 
@@ -276,7 +248,6 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 	}
 
 	lastIdx := results[0].Map()
-	//fmt.Println("results[0].Map()", results[0].Map())
 	return lastIdx["_source"].Map()["site_id"].Uint()
 }
 
@@ -285,33 +256,16 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	//
 
 	// Perform the search request.
-	var res *esapi.Response
-	var err error
+	res, err := es.Search(
+		es.Search.WithContext(context.Background()),
+		es.Search.WithIndex(searchStrIdx),
+		es.Search.WithBody(queryBuf),
+		es.Search.WithTrackTotalHits(true),
+		es.Search.WithPretty(),
+	)
 
-	waitResponseTime := 0
-
-	for i := 0; i < 5; i++ {
-		time.Sleep(time.Duration(waitResponseTime) * time.Second)
-		res, err = es.Search(
-			es.Search.WithContext(context.Background()),
-			es.Search.WithIndex(searchStrIdx),
-			es.Search.WithBody(queryBuf),
-			es.Search.WithTrackTotalHits(true),
-			es.Search.WithPretty(),
-		)
-
-		if err != nil {
-			fmt.Println("searchQuery(): Error getting response (iteration ", i+1, "): ", err)
-		} else {
-			break
-		}
-		waitResponseTime = int(math.Exp(float64(i + 1)))
-	}
-
-	if err == nil {
-		log.Println("!!! Successful response in searchQuery")
-	} else {
-		log.Println("Result error getting response in searchQuery: ", err)
+	if err != nil {
+		log.Fatalf("Error getting response: %s", err)
 	}
 	defer res.Body.Close()
 
@@ -342,8 +296,6 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 		values[0].Int(),
 		values[1].Int(),
 	)
-
-	//fmt.Println("values[2].String()", values[2].String())
 
 	return values[2].Array()
 }
