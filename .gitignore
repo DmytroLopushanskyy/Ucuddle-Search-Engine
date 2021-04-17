@@ -9,3 +9,4 @@ task-manager/test_functs.py
 ansible/hosts.ini
 crawler/buf.go
 crawler/ucuddle-crawlers
+web/__pycache__
