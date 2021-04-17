@@ -7,13 +7,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/joho/godotenv"
 	"github.com/tidwall/gjson"
 	"log"
 	"os"
+	"path"
+	"strconv"
 	"strings"
 )
 
-func connect() *elasticsearch.Client {
+func elasticConnect() *elasticsearch.Client {
 	fmt.Println("start connecting")
 	log.SetFlags(0)
 
@@ -25,7 +28,11 @@ func connect() *elasticsearch.Client {
 	//
 	// An `ELASTICSEARCH_URL` environment variable will be used when exported.
 	//
-	es, err := elasticsearch.NewDefaultClient()
+	cfg := elasticsearch.Config{
+		Username: os.Getenv("Username"),
+		Password: os.Getenv("Password"),
+	}
+	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("Error creating the client: %s", err)
 	}
@@ -104,7 +111,8 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 }
 
 
-func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
+func indexGetLastId(esClient *elasticsearch.Client, indexName string,
+	nLastRecords int) uint64 {
 	// Build the request body.
 	var buf bytes.Buffer
 
@@ -114,7 +122,7 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 			"match_all": map[string]interface{}{},
 		},
 
-		//"size": 1,
+		"size": nLastRecords,
 
 		"sort": map[string]interface{}{
 			"site_id": map[string]interface{}{
@@ -160,18 +168,23 @@ func main() {
 
 	fmt.Println("Application started")
 
+	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	// Before this module execution, run elasticsearch and kibana servers on your computer
-	es := connect()
+	esClient := elasticConnect()
 
 	fmt.Println("Enter function number to execute: ")
 	functionNames := []string{"insert words", "search indexes", "delete indexes",
-		"get last index"}
+		"get last id and print n last document titles in the index"}
 	for i, funcName := range functionNames {
 		fmt.Println(i+1, " -- ", funcName)
 	}
 
 	var input string
-	var err error
+	//var err error
 
 	fmt.Scanln(&input, &err)
 	if err != nil {
@@ -202,7 +215,7 @@ func main() {
 		}
 
 		fmt.Printf("%v", dataArr)
-		indexing(es, dataArr, idxName)
+		indexing(esClient, dataArr, idxName)
 
 	} else if input == "2" {
 		fmt.Println("Enter your index name for searching")
@@ -215,7 +228,7 @@ func main() {
 		titleName, _ := reader.ReadString('\n')
 		titleName = titleName[:len(titleName)-1]
 
-		searching(es, idxName, titleName)
+		searching(esClient, idxName, titleName)
 
 	} else if input == "3" {
 		fmt.Println("Enter your index for deleting")
@@ -229,6 +242,20 @@ func main() {
 		idStr, _ := reader.ReadString('\n')
 		idStr = idStr[:len(idStr)-1]
 
-		deleting(es, idxName, idStr)
+		deleting(esClient, idxName, idStr)
+	} else if input == "4" {
+		fmt.Println("Enter your index to get last document id and print n last document titles ")
+		reader := bufio.NewReader(os.Stdin)
+		idxName, _ := reader.ReadString('\n')
+		idxName = idxName[:len(idxName)-1]
+		//insertIdxName := "t_english_sites-a16"
+
+		fmt.Println("Enter number of the last elements to get")
+		reader = bufio.NewReader(os.Stdin)
+		nLastRecordsStr, _ := reader.ReadString('\n')
+		nLastRecords, _ := strconv.Atoi(nLastRecordsStr[:len(nLastRecordsStr)-1])
+
+		indexLastIdInt := indexGetLastId(esClient, idxName, nLastRecords)
+		fmt.Println("indexLastIdInt -- ", indexLastIdInt)
 	}
 }
