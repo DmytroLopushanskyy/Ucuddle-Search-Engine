@@ -1,4 +1,5 @@
 /.idea
+<<<<<<< HEAD
 elastic-interaction/buf.go
 
 # important files
@@ -12,3 +13,16 @@ task-manager/test_functs.py
 ansible/hosts.ini
 .crawlers-env
 .flask-env
+=======
+.DS_Store
+*.crawlers-env
+*.flask-env
+*.env
+
+elastic-interaction/buf.go
+task-manager/test_functs.py
+ansible/hosts.ini
+crawler/buf.go
+crawler/ucuddle-crawlers
+web/__pycache__
+>>>>>>> elastic-interaction

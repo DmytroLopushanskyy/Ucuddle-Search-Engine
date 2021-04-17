@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gocolly/colly"
+	"github.com/joho/godotenv"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
+	//"strconv"
 	"strings"
 	"sync"
 	"time"
-	//"time"
+	"path"
 )
 
 type responseLinks struct {
@@ -156,14 +157,10 @@ L:
 		}
 	}
 
-	for idx, s := range site.Hyperlinks {
-		if idx == 4 {
-			break
-		}
 
+	for _, s := range site.Hyperlinks {
 		visit_link(lst, s, visited)
 	}
-
 	return
 }
 
@@ -184,7 +181,6 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.Wait
 
 			done <- true
 			if failed != nil {
-				// fmt.Println()
 				m := make(map[string]string)
 				m["link"] = k
 				m["error"] = failed.Error()
@@ -212,12 +208,14 @@ func main() {
 	}
 	// Elasticsearch and Task Manager have started. The program begins
 
+	// load .env file
+	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	// ------ get links from TaskManager
 	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + "/task_manager/api/v1.0/get_links")
-
-	// used for testing
-	//resp, err := http.Get("http://localhost:5000" + "/task_manager/api/v1.0/get_links")
-	//resp, err := http.Get("https://jsonplaceholder.typicode.com/posts/1")
 
 	// check for response error
 	if err != nil {
@@ -234,26 +232,25 @@ func main() {
 	json.Unmarshal(body, &res)
 
 	links := res.Links
-	fmt.Println("response Links  -- ", links)
+
+	if os.Getenv("DEBUG") == "true" {
+		fmt.Println("response Links  -- ", links)
+	}
+
 	// ------ end getting links from TaskManager
 
 	// elastic connection
 	esClient := elasticConnect()
 
-	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
-	// used for testing
-	//insertIdxName := "t_english_sites-a1"
 
+	// TODO: uncomment
+	//insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
+	insertIdxName := "t_english_sites-a16"
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
-	indexLastId := indexGetLastId(esClient, insertIdxName)
 
-	indexLastIdInt, err := strconv.Atoi(indexLastId)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(-1)
-	}
+	indexLastIdInt := indexGetLastId(esClient, insertIdxName)
 
 	indexLastIdInt += 1
 	fmt.Println("my indexLastId", indexLastIdInt)
@@ -262,9 +259,6 @@ func main() {
 	// used for testing
 	//if false {
 	var numberOfJobs = len(links)
-
-	// TODO: delete after testing
-	//var numberOfJobs = 1
 
 	var wg sync.WaitGroup
 
@@ -285,8 +279,6 @@ func main() {
 					*sliceSites = append(*sliceSites, l)
 					elasticInsert(esClient, *sliceSites, &insertIdxName, &indexLastIdInt)
 
-					// fmt.Println(len(*sliceSites))
-					// fmt.Println(sliceSites[0].Link)
 				case <-killsignal:
 					break F
 				}
@@ -318,30 +310,26 @@ func main() {
 		}(j)
 	}
 
+
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
 		// <-failedLinks
 	}
 
 	close(killsignal)
-
 	wg.Wait()
-	// close(failedLinks)
 
 	close(sites)
-
 	close(failedLinks)
 
-	// used for testing
 	//time.Sleep(1)
 	//crawl(links[numJobs-1], jobs, results, &sites)
 	//writeJSON(sites, "out.json")
 
 	// write to elastic
-	//allSites := make([]Site, 0)
-	//for msg := range sites {
-	//	allSites = append(allSites, msg)
-	//}
-	//elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
-	//}
+	allSites := make([]Site, 0)
+	for msg := range sites {
+		allSites = append(allSites, msg)
+	}
+	elasticInsert(esClient, allSites, &insertIdxName, &indexLastIdInt)
 }

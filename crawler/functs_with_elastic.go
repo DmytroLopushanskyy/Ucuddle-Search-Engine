@@ -17,6 +17,7 @@ import (
 )
 
 type Site struct {
+	SiteId     uint64    `json:"site_id"`
 	Title      string    `json:"title"`
 	Link       string    `json:"link"`
 	Content    string    `json:"content"`
@@ -78,6 +79,9 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
+				"site_id": map[string]interface{}{
+					"type": "unsigned_long",
+				},
 				"title": map[string]interface{}{
 					"type":                  "text",
 					"analyzer":              "english",
@@ -94,7 +98,7 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 					"type": "text",
 				},
 				"added_at_time": map[string]interface{}{
-					"type": "date",
+					"type": "date_nanos",
 				},
 			},
 		},
@@ -125,7 +129,8 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 func setIndexFirstId(es *elasticsearch.Client, idxName string,
 	titleStr string, contentStr string) {
 	var dataArr []Site
-	indexLastIdInt := 1
+	var indexLastIdInt uint64
+	indexLastIdInt = 1
 
 	res, err := es.Indices.Get([]string{idxName})
 	if err != nil { // SKIP
@@ -137,14 +142,15 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 		fmt.Println("\n\n ========== Index does not exist")
 
 		site := Site{
-			Title: titleStr[:len(titleStr)-1],
-			//Text:  contentStr,
-			Link:    "https:",
-			AddedAt: time.Now().UTC(),
+			Title: titleStr[:len(titleStr)],
+			Link:  "https:",
 		}
 
 		dataArr = append(dataArr, site)
-		fmt.Printf("%v", dataArr)
+
+		if os.Getenv("DEBUG") == "true" {
+			fmt.Printf("%v", dataArr)}
+
 
 		// TODO: exist
 		setIndexAnalyzer(es, idxName)
@@ -155,7 +161,7 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 }
 
 func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
-	indexLastId *int) {
+	indexLastId *uint64) {
 	fmt.Println("\n elasticInsert start")
 	var (
 		wg sync.WaitGroup
@@ -169,17 +175,21 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 		go func(i int, site2 Site) {
 			defer wg.Done()
 
+			site2.SiteId = *indexLastId
+			*indexLastId++
+
+			site2.AddedAt = time.Now().UTC()
+
 			// Build the request body.
 			res2B, _ := json.Marshal(site2)
 
 			// Set up the request object.
 			req := esapi.IndexRequest{
 				Index:      *saveStrIdx,
-				DocumentID: strconv.Itoa(*indexLastId),
+				DocumentID: strconv.FormatUint(site2.SiteId, 10),
 				Body:       strings.NewReader(string(res2B)),
 				Refresh:    "true",
 			}
-			*indexLastId++
 
 			// Perform the request with the client.
 			res, err := req.Do(context.Background(), es)
@@ -193,8 +203,8 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
 			}
 		}(i, site)
-
-		fmt.Println(site.Title, " inserted")
+		//
+		//fmt.Println(site.Title, " inserted")
 	}
 	wg.Wait()
 
@@ -202,7 +212,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 	log.Println(strings.Repeat("-", 37))
 }
 
-func indexGetLastId(esClient *elasticsearch.Client, indexName string) string {
+func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 	// Build the request body.
 	var buf bytes.Buffer
 
@@ -215,10 +225,12 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) string {
 		//"size": 1,
 
 		"sort": map[string]interface{}{
-			"added_at_time": map[string]interface{}{
+			"site_id": map[string]interface{}{
 				"order": "desc",
 			},
 		},
+
+		//"track_total_hits": false,
 	}
 
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
@@ -227,16 +239,16 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) string {
 
 	results := searchQuery(esClient, indexName, &buf)
 	//fmt.Println("result", results)
-	//for i, result := range results {
-	//	fmt.Println(i, result.Map()["_source"].Map()["title"])
-	//	fmt.Println("_id", result.Map()["_id"])
-	//	fmt.Println(result.Map()["_source"].Map()["added_at_time"])
-	//	fmt.Println("\n")
-	//}
+	for i, result := range results {
+		fmt.Println(i, result.Map()["_source"].Map()["title"])
+		fmt.Println("_id", result.Map()["_id"])
+		fmt.Println("site_id -- ", result.Map()["_source"].Map()["site_id"])
+		fmt.Println(result.Map()["_source"].Map()["added_at_time"])
+		fmt.Println("\n")
+	}
 
 	lastIdx := results[0].Map()
-	//fmt.Println("results[0].Map()", results[0].Map())
-	return lastIdx["_id"].Str
+	return lastIdx["_source"].Map()["site_id"].Uint()
 }
 
 func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.Buffer) []gjson.Result {
@@ -284,8 +296,6 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 		values[0].Int(),
 		values[1].Int(),
 	)
-
-	//fmt.Println("values[2].String()", values[2].String())
 
 	return values[2].Array()
 }
