@@ -108,7 +108,8 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error) 
 	})
 
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
-		site.Title = site.Title + " " + e.ChildAttr(`meta[property="og:title"]`, "content") + " " + e.ChildText("title") + e.DOM.Find("title").Text()
+		site.Title = site.Title + " " + e.ChildAttr(`meta[property="og:title"]`, "content") + " " +
+			e.ChildText("title") + e.DOM.Find("title").Text()
 	})
 
 	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -156,7 +157,6 @@ L:
 
 		}
 	}
-
 
 	for _, s := range site.Hyperlinks {
 		visit_link(lst, s, visited)
@@ -242,10 +242,10 @@ func main() {
 	// elastic connection
 	esClient := elasticConnect()
 
-
 	// TODO: uncomment
 	//insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
-	insertIdxName := "t_english_sites-a16"
+	//insertIdxName := "t_english_sites-a16"
+	insertIdxName := "t_english_sites-a17"
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
@@ -309,7 +309,6 @@ func main() {
 
 		}(j)
 	}
-
 
 	for c := 0; c < numberOfJobs; c++ {
 		<-done

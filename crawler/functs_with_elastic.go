@@ -19,6 +19,7 @@ import (
 type Site struct {
 	SiteId     uint64    `json:"site_id"`
 	Title      string    `json:"title"`
+	PageRank   uint64    `json:"page_rank"`
 	Link       string    `json:"link"`
 	Content    string    `json:"content"`
 	Hyperlinks []string  `json:"hyperlinks"`
@@ -149,8 +150,8 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 		dataArr = append(dataArr, site)
 
 		if os.Getenv("DEBUG") == "true" {
-			fmt.Printf("%v", dataArr)}
-
+			fmt.Printf("%v", dataArr)
+		}
 
 		// TODO: exist
 		setIndexAnalyzer(es, idxName)
@@ -222,7 +223,7 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 			"match_all": map[string]interface{}{},
 		},
 
-		//"size": 1,
+		"size": 1,
 
 		"sort": map[string]interface{}{
 			"site_id": map[string]interface{}{

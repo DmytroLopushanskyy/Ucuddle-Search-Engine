@@ -60,7 +60,6 @@ func elasticConnect() *elasticsearch.Client {
 	return es
 }
 
-
 func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.Buffer) []gjson.Result {
 	// Search for the indexed documents with full index name and word in titles
 	//
@@ -110,7 +109,6 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	return values[2].Array()
 }
 
-
 func indexGetLastId(esClient *elasticsearch.Client, indexName string,
 	nLastRecords int) uint64 {
 	// Build the request body.
@@ -152,7 +150,6 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string,
 	return lastIdx["_source"].Map()["site_id"].Uint()
 }
 
-
 func main() {
 	// Perform health-check
 	//for {
@@ -177,104 +174,116 @@ func main() {
 	// Before this module execution, run elasticsearch and kibana servers on your computer
 	esClient := elasticConnect()
 
-	fmt.Println("Enter function number to execute: ")
-	functionNames := []string{"insert words", "search indexes", "delete indexes",
-		"get last id and print n last document titles in the index",
-		"update mapping in index", "get index mapping"}
-	for i, funcName := range functionNames {
-		fmt.Println(i+1, " -- ", funcName)
-	}
-
-	var input string
-	//var err error
-
-	fmt.Scanln(&input, &err)
-	if err != nil {
-		log.Fatalf("Error getting response: %s", err)
-	}
-
-	if input == "1" {
-		fmt.Println("Enter your index name for saving in database")
-		reader := bufio.NewReader(os.Stdin)
-		idxName, _ := reader.ReadString('\n')
-		idxName = idxName[:len(idxName)-1]
-
-		fmt.Println("Enter your data for indexing")
-
-		var dataArr []string
-		continueInput := 1
-		for continueInput == 1 {
-			fmt.Println("Enter your textLine: ")
-			reader := bufio.NewReader(os.Stdin)
-			textLine, _ := reader.ReadString('\n')
-
-			if textLine == "q\n" {
-				continueInput = 0
-				break
-			}
-
-			dataArr = append(dataArr, textLine[:len(textLine)-1])
+	for {
+		fmt.Println("\n\nEnter function number to execute: ")
+		functionNames := []string{"insert words", "search indexes", "delete all docs in index",
+			"get last id and print n last document titles in the index",
+			"update mapping in index", "get index mapping",
+			"delete several indexes"}
+		for i, funcName := range functionNames {
+			fmt.Println(i+1, " -- ", funcName)
 		}
 
-		fmt.Printf("%v", dataArr)
-		indexing(esClient, dataArr, idxName)
+		var input string
+		//var err error
 
-	} else if input == "2" {
-		fmt.Println("Enter your index name for searching")
-		reader := bufio.NewReader(os.Stdin)
-		idxName, _ := reader.ReadString('\n')
-		idxName = idxName[:len(idxName)-1]
+		fmt.Scanln(&input, &err)
+		if err != nil {
+			log.Fatalf("Error getting response: %s", err)
+		}
 
-		fmt.Println("Enter your title name for searching")
-		reader = bufio.NewReader(os.Stdin)
-		titleName, _ := reader.ReadString('\n')
-		titleName = titleName[:len(titleName)-1]
+		if input == "1" {
+			fmt.Println("Enter your index name for saving in database")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
 
-		searching(esClient, idxName, titleName)
+			fmt.Println("Enter your data for indexing")
 
-	} else if input == "3" {
-		fmt.Println("Enter your index for deleting")
-		reader := bufio.NewReader(os.Stdin)
-		idxName, _ := reader.ReadString('\n')
-		idxName = idxName[:len(idxName)-1]
+			var dataArr []string
+			continueInput := 1
+			for continueInput == 1 {
+				fmt.Println("Enter your textLine: ")
+				reader := bufio.NewReader(os.Stdin)
+				textLine, _ := reader.ReadString('\n')
 
-		fmt.Println("Enter your document id in this index for deleting",
-			"\n or '--' to delete all documents in this index")
-		reader = bufio.NewReader(os.Stdin)
-		idStr, _ := reader.ReadString('\n')
-		idStr = idStr[:len(idStr)-1]
+				if textLine == "q\n" {
+					continueInput = 0
+					break
+				}
 
-		deleting(esClient, idxName, idStr)
+				dataArr = append(dataArr, textLine[:len(textLine)-1])
+			}
 
-	} else if input == "4" {
-		fmt.Println("Enter your index to get last document id and print n last document titles")
-		reader := bufio.NewReader(os.Stdin)
-		idxName, _ := reader.ReadString('\n')
-		idxName = idxName[:len(idxName)-1]
-		//insertIdxName := "t_english_sites-a16"
+			fmt.Printf("%v", dataArr)
+			indexing(esClient, dataArr, idxName)
 
-		fmt.Println("Enter number of the last elements to get")
-		reader = bufio.NewReader(os.Stdin)
-		nLastRecordsStr, _ := reader.ReadString('\n')
-		nLastRecords, _ := strconv.Atoi(nLastRecordsStr[:len(nLastRecordsStr)-1])
+		} else if input == "2" {
+			fmt.Println("Enter your index name for searching")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
 
-		indexLastIdInt := indexGetLastId(esClient, idxName, nLastRecords)
-		fmt.Println("indexLastIdInt -- ", indexLastIdInt)
+			fmt.Println("Enter your title name for searching")
+			reader = bufio.NewReader(os.Stdin)
+			titleName, _ := reader.ReadString('\n')
+			titleName = titleName[:len(titleName)-1]
 
-	} else if input == "5" {
-		fmt.Println("Enter your index to update mapping")
-		reader := bufio.NewReader(os.Stdin)
-		idxName, _ := reader.ReadString('\n')
-		idxName = idxName[:len(idxName)-1]
+			searching(esClient, idxName, titleName)
 
-		updateIndexMapping(esClient, idxName)
+		} else if input == "3" {
+			fmt.Println("Enter your index for deleting")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
 
-	} else if input == "6" {
-		fmt.Println("Enter your index to get mapping")
-		reader := bufio.NewReader(os.Stdin)
-		idxName, _ := reader.ReadString('\n')
-		idxName = idxName[:len(idxName)-1]
+			fmt.Println("Enter your document id in this index for deleting",
+				"\n or '--' to delete all documents in this index")
+			reader = bufio.NewReader(os.Stdin)
+			idStr, _ := reader.ReadString('\n')
+			idStr = idStr[:len(idStr)-1]
 
-		getIndexMapping(esClient, idxName)
+			deleting(esClient, idxName, idStr)
+
+		} else if input == "4" {
+			fmt.Println("Enter your index to get last document id and print n last document titles")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
+			//insertIdxName := "t_english_sites-a16"
+
+			fmt.Println("Enter number of the last elements to get")
+			reader = bufio.NewReader(os.Stdin)
+			nLastRecordsStr, _ := reader.ReadString('\n')
+			nLastRecords, _ := strconv.Atoi(nLastRecordsStr[:len(nLastRecordsStr)-1])
+
+			indexLastIdInt := indexGetLastId(esClient, idxName, nLastRecords)
+			fmt.Println("indexLastIdInt -- ", indexLastIdInt)
+
+		} else if input == "5" {
+			fmt.Println("Enter your index to update mapping")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
+
+			updateIndexMapping(esClient, idxName)
+
+		} else if input == "6" {
+			fmt.Println("Enter your index to get mapping")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
+
+			getIndexMapping(esClient, idxName)
+
+		} else if input == "7" {
+			fmt.Println("Enter indexes to delete (input indexes separated by one space)")
+			reader := bufio.NewReader(os.Stdin)
+			indexes, _ := reader.ReadString('\n')
+			indexes = indexes[:len(indexes)-1]
+
+			deleteIndexes(esClient, strings.Split(indexes, " "))
+
+		}
 	}
 }
