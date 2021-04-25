@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"bufio"
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/gocolly/colly"
@@ -17,14 +17,72 @@ import (
 	"path"
 )
 
-type responseLinks struct {
-	Links []string `json:"links"`
+type SafeListOfSites struct {
+	mu sync.Mutex
+	actual_site []Site
 }
 
-func writeJSON(data <-chan Site, writefile string) {
+func (c *SafeListOfSites) addSite(site Site) {
+	c.mu.Lock()
+	// Lock so only one goroutine at a time can access the map c.v.
+	c.actual_site = append(c.actual_site, site)
+	c.mu.Unlock()
+}
+
+func (c *SafeListOfSites) checkIfContains(site Site) (int,bool) { 
+	c.mu.Lock()
+	for i, item := range c.actual_site {
+        if item.Link == site.Link {
+			c.mu.Unlock()
+            return i, true
+        }
+    }
+	c.mu.Unlock()
+    return -1, false
+}
+
+type SafeList struct {
+	mu sync.Mutex
+	Links []string
+}
+
+func (c *SafeList) addLink(visitedLink string) {
+	c.mu.Lock()
+	// Lock so only one goroutine at a time can access the map c.v.
+	c.Links = append(c.Links, visitedLink)
+	c.mu.Unlock()
+}
+
+func (c *SafeList) checkIfContains(link string) (int,bool) { 
+	c.mu.Lock()
+	for i, item := range c.Links {
+        if item == link {
+			c.mu.Unlock()
+            return i, true
+        }
+    }
+	c.mu.Unlock()
+    return -1, false
+}
+
+func writeSliceJSON(data []Site, writefile string){
+	file, err := json.MarshalIndent(data, "", " ")
+	if err != nil{
+		log.Println("error while writing a file")
+		return
+	}
+
+	_ = ioutil.WriteFile(writefile, file, 0644)
+}
+
+func writeChannelJSON(data <-chan Site, writefile string) {
+
 	allSites := make([]Site, 0)
 	for msg := range data {
+		// if msg.Title == ""
+		{
 		allSites = append(allSites, msg)
+		}
 	}
 
 	file, err := json.MarshalIndent(allSites, "", " ")
@@ -36,30 +94,43 @@ func writeJSON(data <-chan Site, writefile string) {
 
 }
 
-func Find(slice []string, val string) (int, bool) {
-	for i, item := range slice {
-		if item == val {
-			return i, true
-		}
+func readLines(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
 	}
-	return -1, false
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
 }
 
-func visit_link(lst chan<- Site, link string, visited *[]string) (failed error) {
-	var site Site
-	//collector := colly.NewCollector(
-	//	colly.AllowedDomains("https://organexpressions.com","organexpressions.com",
-	//		"https://www.organexpressions.com", "www.organexpressions.com",
-	//		 "https://oneessencehealing.com","oneessencehealing.com",
-	//		 "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
-	//)
+func Find(slice []string, val string) (int, bool) {
+    for i, item := range slice {
+        if item == val {
+            return i, true
+        }
+    }
+    return -1, false
+}
 
-	collector := colly.NewCollector()
+func visit_link(lst chan<- Site, link string, visited *SafeList, id int) (failed error){
+	var site Site
+	collector := colly.NewCollector(
+		colly.AllowedDomains("https://organexpressions.com","organexpressions.com", "https://www.organexpressions.com", "www.organexpressions.com",
+							 "https://oneessencehealing.com","oneessencehealing.com", "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
+	)
 
 	collector.OnRequest(func(request *colly.Request) {
+		// if (request.URL.String() =="https://oneessencehealing.com/"){
 		fmt.Println("Visiting", request.URL.String())
+		// }
 	})
-
+	
 	collector.OnResponse(func(response *colly.Response) {
 		if response.StatusCode != 200 {
 			fmt.Println(response.StatusCode)
@@ -68,7 +139,7 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error) 
 
 	collector.OnError(func(response *colly.Response, err error) {
 		failed = err
-		if response.StatusCode != 200 && response.StatusCode != 0 {
+		if response.StatusCode != 200 && response.StatusCode != 0{
 			fmt.Println(response.StatusCode)
 		}
 	})
@@ -96,26 +167,30 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error) 
 		site.Title = site.Title + " " + link
 		site.Link = (element.Request).URL.String()
 		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
-		site.Title = site.Title + " " + element.ChildText("title") + " " + element.DOM.Find("title").Text()
+		site.Title = site.Title + " " +  element.ChildText("title") + " " + element.DOM.Find("title").Text()
 	})
 
-	collector.OnHTML("title", func(element *colly.HTMLElement) {
+	collector.OnHTML("title",func(element *colly.HTMLElement) {
 		site.Title = site.Title + " " + element.Text
 	})
 
-	collector.OnHTML("h1", func(element *colly.HTMLElement) {
+	collector.OnHTML("h1",func(element *colly.HTMLElement) {
 		site.Title = site.Title + " " + element.Text
 	})
 
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
-		site.Title = site.Title + " " + e.ChildAttr(`meta[property="og:title"]`, "content") + " " + e.ChildText("title") + e.DOM.Find("title").Text()
+		site.Title = site.Title + " " +  e.ChildAttr(`meta[property="og:title"]`, "content") + " " +  e.ChildText("title") + e.DOM.Find("title").Text()
 	})
-
+	
 	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		link := e.Request.AbsoluteURL(e.Attr("href"))
-		if link != "" {
-			site.Hyperlinks = append(site.Hyperlinks, link)
+		if (link != "" ){
+			_, found := Find(site.Hyperlinks, link)
+			if (!found){
+				site.Hyperlinks = append(site.Hyperlinks, link)
+			}
 		}
+
 	})
 	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
 
@@ -127,60 +202,79 @@ func visit_link(lst chan<- Site, link string, visited *[]string) (failed error) 
 	// 		fmt.Println("Description: ", e.ChildText("article .description p"))
 	// 	}
 	// })
-	// 	site.Title
-
-	// if strings.EqualFold(e.ChildAttr(`meta[property="og:title"]`, "content"), "article") {
-	// 	// Find the emoji page title
-	// 	fmt.Println("Emoji: ", e.ChildText("article h1"))
-	// 	// Grab all the text from the emoji's description
-	// 	fmt.Println("Description: ", e.ChildText("article .description p"))
-	// }
+		// 	site.Title
+		
+		// if strings.EqualFold(e.ChildAttr(`meta[property="og:title"]`, "content"), "article") {
+		// 	// Find the emoji page title
+		// 	fmt.Println("Emoji: ", e.ChildText("article h1"))
+		// 	// Grab all the text from the emoji's description
+		// 	fmt.Println("Description: ", e.ChildText("article .description p"))
+		// }
 	// })
 
-	_, found := Find(*visited, link)
-	if !found {
-		*visited = append(*visited, link)
-		collector.Visit(link)
-	}
 
-	if site.Link == "" {
+
+	_, found := visited.checkIfContains(link)
+
+	if !found {
+		// *visited = append(*visited, link)
+		visited.addLink(link)
+		collector.Visit(link)
+    }else
+	{	
 		return
 	}
 
-L:
+
+	// _, found := Find(*visited, link)
+    // if !found {
+	// 	*visited = append(*visited, link)
+	// 	collector.Visit(link)
+    // }
+	
+	
+	if site.Link == ""{
+		return 
+	}
+
+	L:
 	for true {
 		select {
 		case lst <- site:
 			break L
 		default:
-
+			
 		}
 	}
 
-
-	for _, s := range site.Hyperlinks {
-		visit_link(lst, s, visited)
+	
+	for _, s := range site.Hyperlinks{
+		visit_link(lst, s, visited, id)
 	}
-	return
+
+	return 
 }
 
-func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.WaitGroup, failedLinks chan map[string]string) {
+func crawl(lst chan<- Site, queue chan string, done, ks chan bool, wg *sync.WaitGroup, failedLinks chan map[string]string, id int) {
 	for true {
 		select {
 		case k := <-queue:
-			// site Side
+			// site Side 
+			
+			var failed error 
 
-			var failed error
+			// visited := make([]string, 0)
+			visited := SafeList{Links: make([]string, 0)}
 
-			visited := make([]string, 0)
-			failed = visit_link(lst, k, &visited)
-
-			if failed == nil {
-
+			failed = visit_link(lst, k, &visited, id)
+			
+			if failed == nil{
+				
 			}
-
+			
 			done <- true
-			if failed != nil {
+			if failed != nil{
+				// fmt.Println()
 				m := make(map[string]string)
 				m["link"] = k
 				m["error"] = failed.Error()
@@ -262,7 +356,9 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	sliceSites := make([]Site, 0)
+	// sliceSites := make([]Site, 0)
+	sliceSites := SafeListOfSites{actual_site: make([]Site, 0)}
+
 	sites := make(chan Site, len(links)+1)
 
 	failedLinks := make(chan map[string]string, len(links)+1)
@@ -276,8 +372,12 @@ func main() {
 			for true {
 				select {
 				case l := <-sites:
-					*sliceSites = append(*sliceSites, l)
-					elasticInsert(esClient, *sliceSites, &insertIdxName, &indexLastIdInt)
+					// *sliceSites = append(*sliceSites, l)
+					_, found := sliceSites.checkIfContains(l)
+					if (!found){
+						sliceSites.addSite(l)
+					}
+					elasticInsert(esClient, *sliceSites.actual_site, &insertIdxName, &indexLastIdInt)
 
 				case <-killsignal:
 					break F
@@ -292,7 +392,7 @@ func main() {
 
 	numberOfWorkers := 2
 	for i := 0; i < numberOfWorkers; i++ {
-		go crawl(sites, queue, done, killsignal, &wg, failedLinks)
+		go crawl(sites, queue, done, killsignal, &wg, failedLinks, i)
 	}
 
 	for j := 0; j < numberOfJobs; j++ {
