@@ -1,16 +1,11 @@
-import json
 import os
-
 import jsonpickle
+
 from elasticsearch import Elasticsearch
+
 
 es = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
                     http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
-
-
-class MyEncoder(json.JSONEncoder):
-    def default(self, o):
-        return o.__dict__
 
 
 def elastic_search(search_line):

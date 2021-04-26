@@ -164,6 +164,7 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 	indexLastId *uint64) {
 	fmt.Println("\n elasticInsert start")
+
 	var (
 		wg sync.WaitGroup
 	)
