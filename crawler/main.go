@@ -13,6 +13,8 @@ import (
 	"path"
 	"time"
 
+	//"time"
+
 	//"strconv"
 	"strings"
 	"sync"
@@ -227,6 +229,7 @@ func visit_link(lst chan<- Site, link string, visited *SafeList, id int) (failed
 		// *visited = append(*visited, link)
 		visited.addLink(link)
 		collector.Visit(link)
+		//fmt.Println("site.Content -- ", site.Content)
 	} else {
 		fmt.Println("checkIfContains ", link, "visited -- ", found)
 		return
@@ -316,8 +319,8 @@ func main() {
 	// Elasticsearch and Task Manager have started. The program begins
 
 	// load .env file
-	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
-	//err := godotenv.Load(path.Join("crawlers-env.env"))
+	//err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+	err := godotenv.Load(path.Join("crawlers-env.env"))
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -339,7 +342,7 @@ func main() {
 	res := responseLinks{}
 	json.Unmarshal(body, &res)
 
-	links := res.Links[:10]
+	links := res.Links
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)
@@ -352,7 +355,7 @@ func main() {
 
 	// TODO: uncomment
 	//insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
-	insertIdxName := "t_english_sites-a31"
+	insertIdxName := "t_english_sites-a33"
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)

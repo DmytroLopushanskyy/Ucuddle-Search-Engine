@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -202,11 +201,11 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 			for i := 0; i < 5; i++ {
 				time.Sleep(time.Duration(waitResponseTime) * time.Second)
 
-				if i == 2 {
-					res, err = req.Do(context.Background(), es)
-				} else {
-					err = errors.New("test error")
-				}
+				//if i == 2 {
+				res, err = req.Do(context.Background(), es)
+				//} else {
+				//	err = errors.New("test error")
+				//}
 
 				if err != nil {
 					fmt.Println("elasticInsert(): Error getting response (iteration ", i+1, "): ", err)
