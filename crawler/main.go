@@ -203,7 +203,6 @@ func visit_link(lst chan<- Site, link string, visited *SafeList, id int) (failed
 		}
 
 	})
-	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
 
 	// c.OnHTML("html", func(e *colly.HTMLElement) {
 	// 	if strings.EqualFold(e.ChildAttr(`meta[property="og:type"]`, "content"), "article") {
@@ -235,6 +234,7 @@ func visit_link(lst chan<- Site, link string, visited *SafeList, id int) (failed
 		return
 	}
 
+	site.Content = strings.Join(mum["p"], " \n ") + strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ")
 	// _, found := Find(*visited, link)
 	// if !found {
 	// 	*visited = append(*visited, link)
@@ -246,7 +246,7 @@ func visit_link(lst chan<- Site, link string, visited *SafeList, id int) (failed
 		return
 	}
 
-L:
+	L:
 	for true {
 		select {
 		case lst <- site:
