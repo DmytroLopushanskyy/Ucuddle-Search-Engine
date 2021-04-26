@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -21,6 +22,7 @@ type Site struct {
 	SiteId     uint64    `json:"site_id"`
 	Title      string    `json:"title"`
 	Link       string    `json:"link"`
+	PageRank   uint64    `json:"page_rank"`
 	Content    string    `json:"content"`
 	Hyperlinks []string  `json:"hyperlinks"`
 	AddedAt    time.Time `json:"added_at_time"`
@@ -200,11 +202,11 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 			for i := 0; i < 5; i++ {
 				time.Sleep(time.Duration(waitResponseTime) * time.Second)
 
-				//if i == 2 {
-				res, err = req.Do(context.Background(), es)
-				//} else {
-				//	err = errors.New("test error")
-				//}
+				if i == 2 {
+					res, err = req.Do(context.Background(), es)
+				} else {
+					err = errors.New("test error")
+				}
 
 				if err != nil {
 					fmt.Println("elasticInsert(): Error getting response (iteration ", i+1, "): ", err)

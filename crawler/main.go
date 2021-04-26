@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"time"
+
 	//"strconv"
 	"strings"
 	"sync"
@@ -302,20 +304,20 @@ func crawl(lst chan<- Site, queue chan string, done, ks chan bool,
 
 func main() {
 	// Perform health-check
-	//for {
-	//	_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
-	//	_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
-	//	fmt.Println("Waiting for Elasticsearch and Task Manager to be alive.")
-	//	if err_elastic == nil && err_manager == nil {
-	//		break
-	//	}
-	//	time.Sleep(time.Second)
-	//}
+	for {
+		_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
+		_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
+		fmt.Println("Waiting for Elasticsearch and Task Manager to be alive.")
+		if err_elastic == nil && err_manager == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 	// Elasticsearch and Task Manager have started. The program begins
 
 	// load .env file
-	//err := godotenv.Load(path.Join("..", "crawlers-env.env"))
-	err := godotenv.Load(path.Join("crawlers-env.env"))
+	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+	//err := godotenv.Load(path.Join("crawlers-env.env"))
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -337,7 +339,7 @@ func main() {
 	res := responseLinks{}
 	json.Unmarshal(body, &res)
 
-	links := res.Links
+	links := res.Links[:10]
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)
@@ -350,7 +352,7 @@ func main() {
 
 	// TODO: uncomment
 	//insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
-	insertIdxName := "t_english_sites-a29"
+	insertIdxName := "t_english_sites-a31"
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
