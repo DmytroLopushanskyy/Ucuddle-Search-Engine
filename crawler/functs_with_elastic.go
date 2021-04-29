@@ -17,16 +17,6 @@ import (
 	"time"
 )
 
-type Site struct {
-	SiteId     uint64    `json:"site_id"`
-	Title      string    `json:"title"`
-	Link       string    `json:"link"`
-	PageRank   uint64    `json:"page_rank"`
-	Content    string    `json:"content"`
-	Hyperlinks []string  `json:"hyperlinks"`
-	AddedAt    time.Time `json:"added_at_time"`
-}
-
 func elasticConnect() *elasticsearch.Client {
 	fmt.Println("start connecting")
 	log.SetFlags(0)
@@ -73,11 +63,15 @@ func elasticConnect() *elasticsearch.Client {
 
 func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	var buf bytes.Buffer
+
+	// TODO: check https://stackoverflow.com/questions/55372330/what-does-limit-of-total-fields-1000-in-index-has-been-exceeded-means-in
+	//  if it cause a problem
 	query := map[string]interface{}{
 		"settings": map[string]interface{}{
 			"analysis": map[string]interface{}{
 				"analyzer": "english",
 			},
+			"index.mapping.total_fields.limit": 3000,
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -174,7 +168,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 	for i, site := range *dataArr {
 		wg.Add(1)
 
-		go func(i int, site2 Site) {
+		go func(nDoc int, site2 Site) {
 			defer wg.Done()
 
 			site2.SiteId = *indexLastId
@@ -198,7 +192,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 			var err error
 
 			waitResponseTime := 0
-			for i := 0; i < 5; i++ {
+			for j := 0; j < 5; j++ {
 				time.Sleep(time.Duration(waitResponseTime) * time.Second)
 
 				//if i == 2 {
@@ -208,11 +202,11 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 				//}
 
 				if err != nil {
-					fmt.Println("elasticInsert(): Error getting response (iteration ", i+1, "): ", err)
+					log.Println("elasticInsert(): Error getting response (iteration ", j+1, "): ", err)
 				} else {
 					break
 				}
-				waitResponseTime = int(math.Exp(float64(i + 1)))
+				waitResponseTime = int(math.Exp(float64(j + 1)))
 			}
 
 			if err != nil {
@@ -222,6 +216,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 
 			if res.IsError() {
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
+				log.Println("response -- ", res)
 			}
 		}(i, site)
 
