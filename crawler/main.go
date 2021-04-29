@@ -351,11 +351,11 @@ func main() {
 				}
 
 				if len(sliceSites.actualSites) >= 5 {
-					fmt.Println("links to insert in elastic")
-					for _, s := range sliceSites.actualSites {
-						fmt.Println(s.Link)
-					}
-					fmt.Println("-=-=-=-=-=-=-=-=-=-==-=-")
+					//fmt.Println("links to insert in elastic")
+					//for _, s := range sliceSites.actualSites {
+					//	fmt.Println(s.Link)
+					//}
+					//fmt.Println("-=-=-=-=-=-=-=-=-=-==-=-")
 
 					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
 				}
