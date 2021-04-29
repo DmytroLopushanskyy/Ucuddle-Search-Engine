@@ -99,23 +99,23 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 
 	collector.OnHTML("p", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = (element.Request).URL.String()
+		site.Link = strings.TrimSpace((element.Request).URL.String())
 	})
 
 	collector.OnHTML("li", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = (element.Request).URL.String()
+		site.Link = strings.TrimSpace((element.Request).URL.String())
 	})
 
 	collector.OnHTML("article", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = (element.Request).URL.String()
+		site.Link = strings.TrimSpace((element.Request).URL.String())
 	})
 
 	collector.OnHTML("head", func(element *colly.HTMLElement) {
-		link := element.Attr("title")
+		link := strings.TrimSpace(element.Attr("title"))
 		site.Title = site.Title + " " + link
-		site.Link = (element.Request).URL.String()
+		site.Link = strings.TrimSpace((element.Request).URL.String())
 		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
 		site.Title = site.Title + " " + element.ChildText("title") + " " + element.DOM.Find("title").Text()
 	})
@@ -135,12 +135,6 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 
 	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		link := strings.TrimSpace(e.Request.AbsoluteURL(e.Attr("href")))
-		if link != "" && len(link) > 5 {
-			if link[:5] != "https" {
-				fmt.Println("link[:5] == \"https\" -- ", link[:5] == "https")
-				fmt.Println(link)
-			}
-		}
 		if link != "" && len(link) > 5 && link[:5] == "https" {
 			// clear from link parameters
 			startLinkParameters := strings.Index(link, "?")
@@ -198,7 +192,6 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	// }
 
 	if site.Link == "" {
-		fmt.Println("if site.Link == \"\" {")
 		return
 	}
 
@@ -244,7 +237,6 @@ func crawl(lst chan<- Site, linksQueue chan string, done, ks chan bool,
 
 			done <- true
 			if failed != nil {
-				// fmt.Println()
 				m := make(map[string]string)
 				m["link"] = link
 				m["error"] = failed.Error()
@@ -297,7 +289,8 @@ func main() {
 	json.Unmarshal(body, &res)
 
 	// TODO: change after testing
-	links := append(res.Links[:20], "https://www.google.com/")
+	//links := append(res.Links[:20], "https://www.google.com/")
+	links := res.Links
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)
@@ -331,41 +324,65 @@ func main() {
 	killSignal := make(chan bool)
 	allParsedLinks := newSafeSetOfLinks()
 
-	numberOfWritingCrawlers := 2
-	for i := 0; i < numberOfWritingCrawlers; i++ {
-		go func(killSignal chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
-			allParsedLinks *SafeSetOfLinks) {
-		F:
-			for true {
-				select {
-				// take from channel of parsed sites and insert in elasticsearch
-				case site := <-sites:
-					//_, found := sliceSites.checkIfContains(site)
-					//if !found {
-					//	sliceSites.addSite(site)
-					//}
+	//numberOfWritingCrawlers := 2
+	//for i := 0; i < numberOfWritingCrawlers; i++ {
+	go func(killSignal chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
+		allParsedLinks *SafeSetOfLinks) {
+		wg.Add(1)
 
-					found := allParsedLinks.checkIfContains(site.Link)
-					if !found {
-						allParsedLinks.addLink(site.Link)
-						sliceSites.addSite(site)
+		numFinishedRoutins := 0
+
+	F:
+		for true {
+			select {
+			// take from channel of parsed sites and insert in elasticsearch
+			case site := <-sites:
+				//_, found := sliceSites.checkIfContains(site)
+				//if !found {
+				//	sliceSites.addSite(site)
+				//}
+
+				found := allParsedLinks.checkIfContains(site.Link)
+				fmt.Println("found in allParsedLinks -- ", found)
+				if !found {
+					fmt.Println("add Link -- ", site.Link)
+					allParsedLinks.addLink(site.Link)
+					sliceSites.addSite(site)
+				}
+
+				if len(sliceSites.actualSites) >= 5 {
+					fmt.Println("links to insert in elastic")
+					for _, s := range sliceSites.actualSites {
+						fmt.Println(s.Link)
 					}
+					fmt.Println("-=-=-=-=-=-=-=-=-=-==-=-")
 
-					if len(sliceSites.actualSites) >= 5 {
-						elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
-					}
+					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
+				}
 
-				case <-killSignal:
+			case <-killSignal:
+				// TODO:
+				numFinishedRoutins++
+				if numFinishedRoutins == 2 {
 					break F
 				}
 			}
-		}(killSignal, &sliceSites, sites, allParsedLinks)
-	}
+		}
+
+		if len(sliceSites.actualSites) != 0 {
+			elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
+		}
+
+		defer wg.Done()
+	}(killSignal, &sliceSites, sites, allParsedLinks)
+	//}
 
 	linksQueue := make(chan string)
 	done := make(chan bool)
 
 	numberOfWorkers := 2
+
+	// TODO: replace visited variable in crawl function
 	visited := newSafeSetOfLinks()
 	for i := 0; i < numberOfWorkers; i++ {
 		go crawl(sites, linksQueue, done, killSignal, &wg, visited, failedLinks, i)

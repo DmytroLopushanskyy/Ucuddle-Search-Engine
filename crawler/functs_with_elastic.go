@@ -224,7 +224,11 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 	}
 	wg.Wait()
 
+	var m sync.Mutex
+	m.Lock()
 	*dataArr = (*dataArr)[:0]
+	m.Unlock()
+
 	log.Println(strings.Repeat("-", 37))
 }
 
