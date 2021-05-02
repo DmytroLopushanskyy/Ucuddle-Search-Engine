@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/abadojack/whatlanggo"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
 	"io/ioutil"
@@ -94,30 +95,13 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 		}
 	})
 
+	var pageLang string
 	var mum map[string][]string
 	mum = make(map[string][]string)
 
 	collector.OnHTML("p", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
 		site.Link = strings.TrimSpace((element.Request).URL.String())
-	})
-
-	collector.OnHTML("li", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
-	})
-
-	collector.OnHTML("article", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
-	})
-
-	collector.OnHTML("head", func(element *colly.HTMLElement) {
-		link := strings.TrimSpace(element.Attr("title"))
-		site.Title = site.Title + " " + link
-		site.Link = strings.TrimSpace((element.Request).URL.String())
-		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
-		site.Title = site.Title + " " + element.ChildText("title") + " " + element.DOM.Find("title").Text()
 	})
 
 	collector.OnHTML("title", func(element *colly.HTMLElement) {
@@ -131,6 +115,63 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
 		site.Title = site.Title + " " + e.ChildAttr(`meta[property="og:title"]`, "content") + " " +
 			e.ChildText("title") + e.DOM.Find("title").Text()
+		pageLang = e.Attr("lang")
+	})
+
+	collector.OnHTML("head", func(element *colly.HTMLElement) {
+		link := strings.TrimSpace(element.Attr("title"))
+		site.Title = site.Title + " " + link
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
+		site.Title = site.Title + " " + element.ChildText("title") + " " + element.DOM.Find("title").Text()
+	})
+
+	found := visited.checkIfContains(link)
+
+	if found {
+		fmt.Println("checkIfContains ", link, "visited -- ", found)
+		return
+	}
+
+	visited.addLink(link)
+	collector.Visit(link)
+
+	pTagText := strings.Join(mum["p"], "\n")
+
+	if pageLang != "uk" {
+		var textChunk string
+		enoughLenChunk := 400
+		lenText := len(pTagText)
+		if lenText == 0 {
+			textChunk = site.Title
+		} else {
+			textChunk = pTagText
+		}
+
+		if len(textChunk) >= enoughLenChunk {
+			slicePos := 0
+			chunksLenPosGap := lenText / 5
+			lenSubChunk := enoughLenChunk / 5
+			for i := 0; i < 5; i++ {
+				textChunk = textChunk + pTagText[slicePos:slicePos+lenSubChunk]
+				slicePos += chunksLenPosGap
+			}
+		}
+
+		chunkLang := whatlanggo.DetectLang(textChunk)
+		if whatlanggo.Langs[chunkLang] != "Ukrainian" {
+			return
+		}
+	}
+
+	collector.OnHTML("li", func(element *colly.HTMLElement) {
+		mum[element.Name] = append(mum[element.Name], element.Text)
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+	})
+
+	collector.OnHTML("article", func(element *colly.HTMLElement) {
+		mum[element.Name] = append(mum[element.Name], element.Text)
+		site.Link = strings.TrimSpace((element.Request).URL.String())
 	})
 
 	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -166,24 +207,13 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	// }
 	// })
 
-	found := visited.checkIfContains(link)
-
-	if !found {
-		// *visited = append(*visited, link)
-		visited.addLink(link)
-		collector.Visit(link)
-	} else {
-		fmt.Println("checkIfContains ", link, "visited -- ", found)
-		return
-	}
-
 	//site.Hyperlinks = hyperlinksSet.dict
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
 	}
 
-	site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
+	site.Content = strings.TrimSpace(pTagText +
 		strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n "))
 	// _, found := Find(*visited, link)
 	// if !found {
@@ -289,8 +319,10 @@ func main() {
 	json.Unmarshal(body, &res)
 
 	// TODO: change after testing
-	//links := append(res.Links[:20], "https://www.google.com/")
-	links := res.Links
+	links := append(res.Links[:5], "https://www.pravda.com.ua/articles/2021/05/2/7292251/",
+		"https://uk-ua.facebook.com/login/web/",
+		"https://ucu.edu.ua/")
+	//links := res.Links
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)

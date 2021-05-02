@@ -1,0 +1,15 @@
+.idea
+elastic-interaction/buf.go
+
+# important files
+*.env
+*.crawlers-env
+*.flask-env
+
+.DS_Store
+task-manager/test_functs.py
+ansible/hosts.ini
+
+crawler/buf.go
+crawler/ucuddle-crawlers
+web/__pycache__

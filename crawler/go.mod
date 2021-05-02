@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/PuerkitoBio/goquery v1.6.1 // indirect
+	github.com/abadojack/whatlanggo v1.0.1 // indirect
 	github.com/antchfx/htmlquery v1.2.3 // indirect
 	github.com/antchfx/xmlquery v1.3.5 // indirect
 	github.com/elastic/go-elasticsearch/v8 v8.0.0-20210222130227-c653ef6811d2
