@@ -9,22 +9,13 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
-
-type Site struct {
-	SiteId     uint64    `json:"site_id"`
-	Title      string    `json:"title"`
-	PageRank   uint64    `json:"page_rank"`
-	Link       string    `json:"link"`
-	Content    string    `json:"content"`
-	Hyperlinks []string  `json:"hyperlinks"`
-	AddedAt    time.Time `json:"added_at_time"`
-}
 
 func elasticConnect() *elasticsearch.Client {
 	fmt.Println("start connecting")
@@ -72,11 +63,15 @@ func elasticConnect() *elasticsearch.Client {
 
 func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	var buf bytes.Buffer
+
+	// TODO: check https://stackoverflow.com/questions/55372330/what-does-limit-of-total-fields-1000-in-index-has-been-exceeded-means-in
+	//  if it cause a problem
 	query := map[string]interface{}{
 		"settings": map[string]interface{}{
 			"analysis": map[string]interface{}{
 				"analyzer": "english",
 			},
+			"index.mapping.total_fields.limit": 3000,
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -155,26 +150,25 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 
 		// TODO: exist
 		setIndexAnalyzer(es, idxName)
-		elasticInsert(es, dataArr, &idxName, &indexLastIdInt)
+		elasticInsert(es, &dataArr, &idxName, &indexLastIdInt)
 	} else {
 		fmt.Println("\n\n ========== Index already exists")
 	}
 }
 
-func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
+func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string,
 	indexLastId *uint64) {
 	fmt.Println("\n elasticInsert start")
-
 	var (
 		wg sync.WaitGroup
 	)
 
 	// Index documents concurrently
 	//
-	for i, site := range dataArr {
+	for i, site := range *dataArr {
 		wg.Add(1)
 
-		go func(i int, site2 Site) {
+		go func(nDoc int, site2 Site) {
 			defer wg.Done()
 
 			site2.SiteId = *indexLastId
@@ -194,7 +188,26 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 			}
 
 			// Perform the request with the client.
-			res, err := req.Do(context.Background(), es)
+			var res *esapi.Response
+			var err error
+
+			waitResponseTime := 0
+			for j := 0; j < 5; j++ {
+				time.Sleep(time.Duration(waitResponseTime) * time.Second)
+
+				//if i == 2 {
+				res, err = req.Do(context.Background(), es)
+				//} else {
+				//	err = errors.New("test error")
+				//}
+
+				if err != nil {
+					log.Println("elasticInsert(): Error getting response (iteration ", j+1, "): ", err)
+				} else {
+					break
+				}
+				waitResponseTime = int(math.Exp(float64(j + 1)))
+			}
 
 			if err != nil {
 				log.Fatalf("Error getting response: %s", err)
@@ -203,14 +216,19 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 
 			if res.IsError() {
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
+				log.Println("response -- ", res)
 			}
 		}(i, site)
-		//
-		//fmt.Println(site.Title, " inserted")
+
+		fmt.Println(site.Title, " inserted")
 	}
 	wg.Wait()
 
-	dataArr = dataArr[:0]
+	var m sync.Mutex
+	m.Lock()
+	*dataArr = (*dataArr)[:0]
+	m.Unlock()
+
 	log.Println(strings.Repeat("-", 37))
 }
 
@@ -258,13 +276,28 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	//
 
 	// Perform the search request.
-	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
-		es.Search.WithIndex(searchStrIdx),
-		es.Search.WithBody(queryBuf),
-		es.Search.WithTrackTotalHits(true),
-		es.Search.WithPretty(),
-	)
+	var res *esapi.Response
+	var err error
+
+	waitResponseTime := 0
+
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Duration(waitResponseTime) * time.Second)
+		res, err = es.Search(
+			es.Search.WithContext(context.Background()),
+			es.Search.WithIndex(searchStrIdx),
+			es.Search.WithBody(queryBuf),
+			es.Search.WithTrackTotalHits(true),
+			es.Search.WithPretty(),
+		)
+
+		if err != nil {
+			fmt.Println("searchQuery(): Error getting response (iteration ", i+1, "): ", err)
+		} else {
+			break
+		}
+		waitResponseTime = int(math.Exp(float64(i + 1)))
+	}
 
 	if err != nil {
 		log.Fatalf("Error getting response: %s", err)

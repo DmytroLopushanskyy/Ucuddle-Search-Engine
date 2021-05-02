@@ -8,7 +8,6 @@ import (
 	"log"
 )
 
-
 func updateIndexMapping(es *elasticsearch.Client, indexName string) {
 	{
 		res, err := es.Indices.Close([]string{indexName})
@@ -22,26 +21,26 @@ func updateIndexMapping(es *elasticsearch.Client, indexName string) {
 	{
 		var buf bytes.Buffer
 		query := map[string]interface{}{
-				"properties": map[string]interface{}{
-					"site_id": map[string]interface{}{
-						"type": "unsigned_long",
-					},
-					"!!!my_site_id": map[string]interface{}{ // TODO delete
-						"type": "unsigned_long",
-					},
-					"content": map[string]interface{}{
-						"type":                  "text",
-						"analyzer":              "english",
-						"search_analyzer":       "english",
-						"search_quote_analyzer": "english",
-					},
-					"link": map[string]interface{}{
-						"type": "text",
-					},
-					"added_at_time": map[string]interface{}{
-						"type": "date_nanos",
-					},
+			"properties": map[string]interface{}{
+				"site_id": map[string]interface{}{
+					"type": "unsigned_long",
 				},
+				"!!!my_site_id": map[string]interface{}{ // TODO delete
+					"type": "unsigned_long",
+				},
+				"content": map[string]interface{}{
+					"type":                  "text",
+					"analyzer":              "english",
+					"search_analyzer":       "english",
+					"search_quote_analyzer": "english",
+				},
+				"link": map[string]interface{}{
+					"type": "text",
+				},
+				"added_at_time": map[string]interface{}{
+					"type": "date_nanos",
+				},
+			},
 		}
 
 		if err := json.NewEncoder(&buf).Encode(query); err != nil {
@@ -67,7 +66,6 @@ func updateIndexMapping(es *elasticsearch.Client, indexName string) {
 
 	fmt.Println("Settings updated !!!")
 }
-
 
 func getIndexMapping(es *elasticsearch.Client, indexName string) {
 	res, err := es.Indices.GetMapping(es.Indices.GetMapping.WithIndex(indexName))

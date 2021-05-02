@@ -123,11 +123,11 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string,
 		"size": nLastRecords,
 
 		// TODO
-		//"sort": map[string]interface{}{
-		//	"site_id": map[string]interface{}{
-		//		"order": "desc",
-		//	},
-		//},
+		"sort": map[string]interface{}{
+			"site_id": map[string]interface{}{
+				"order": "desc",
+			},
+		},
 
 		//"track_total_hits": false,
 	}
@@ -137,11 +137,12 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string,
 	}
 
 	results := searchQuery(esClient, indexName, &buf)
-	fmt.Println("result", results)
+	//fmt.Println("result", results)
 	for i, result := range results {
 		fmt.Println(i, result.Map()["_source"].Map()["title"])
 		fmt.Println("_id", result.Map()["_id"])
 		fmt.Println("site_id -- ", result.Map()["_source"].Map()["site_id"])
+		fmt.Println("content -- ", result.Map()["_source"].Map()["content"])
 		fmt.Println(result.Map()["_source"].Map()["added_at_time"])
 		fmt.Println("\n")
 	}
