@@ -257,7 +257,7 @@ func visit_link(lst chan<- Site, link string, visited *SafeList, id int) (failed
 			
 	// 	}
 	// }
-	lst <- site:
+	lst <- site
 
 	
 	for _, s := range site.Hyperlinks{
