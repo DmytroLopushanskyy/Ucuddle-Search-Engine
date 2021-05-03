@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-
 	//"time"
 
 	//"strconv"
@@ -76,19 +75,6 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 
 	collector := colly.NewCollector()
 
-	//collector.WithTransport(&http.Transport{
-	//	Proxy: http.ProxyFromEnvironment,
-	//	DialContext: (&net.Dialer{
-	//		Timeout:   30 * time.Second,
-	//		KeepAlive: 30 * time.Second,
-	//		DualStack: true,
-	//	}).DialContext,
-	//	MaxIdleConns:          100,
-	//	IdleConnTimeout:       90 * time.Second,
-	//	TLSHandshakeTimeout:   10 * time.Second,
-	//	ExpectContinueTimeout: 1 * time.Second,
-	//})
-
 	collector.OnRequest(func(request *colly.Request) {
 		// if (request.URL.String() =="https://oneessencehealing.com/"){
 		fmt.Println("Visiting", request.URL.String())
@@ -96,7 +82,6 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	})
 
 	collector.OnResponse(func(response *colly.Response) {
-		fmt.Println("get response")
 		if response.StatusCode != 200 {
 			fmt.Println(response.StatusCode)
 		}
@@ -104,7 +89,7 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 
 	collector.OnError(func(response *colly.Response, err error) {
 		failed = err
-		fmt.Println("got ERROR", response.StatusCode)
+		//fmt.Println("got ERROR", response.StatusCode)
 		if response.StatusCode != 200 && response.StatusCode != 0 {
 			fmt.Println(response.StatusCode)
 		}
@@ -147,42 +132,45 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 		fmt.Println("checkIfContains ", link, "visited -- ", found)
 		return
 	}
-	//
-	//lenLink := len(link)
-	//if link[lenLink - 1: lenLink] != "/" {
-	//	link += "/"
-	//}
-	//
-	//if strings.Contains(link, "uk-ua.") ||
-	//	strings.Contains(link, "?lang=uk") || strings.Contains(link, "/uk/") {
-	//	pageLang = "uk"
-	//}
-	//
-	//var pTagText string
-	//if pageLang != "uk" {
-	//	allUkrLinks := getAllSiteUkrLinks(link)
-	//
-	//	for _, newLink := range allUkrLinks {
-	//		visited.addLink(newLink)
-	//		collector.Visit(newLink)
-	//
-	//		pTagText = strings.Join(mum["p"], "\n")
-	//
-	//		if checkLang(pTagText, site.Title, "Ukrainian") {
-	//			pageLang = "uk"
-	//			break
-	//		}
-	//	}
-	//} else {
-	//	visited.addLink(link)
-	//	collector.Visit(link)
-	//
-	//	pTagText = strings.Join(mum["p"], "\n")
-	//}
-	//
-	//if pageLang != "uk" {
-	//	return
-	//}
+
+	lenLink := len(link)
+	if link[lenLink-1:lenLink] != "/" {
+		link += "/"
+	}
+
+	fmt.Println("2link -- ", link)
+	fmt.Println(strings.Contains(link, "?lang=uk"))
+
+	if strings.Contains(link, "uk-ua.") ||
+		strings.Contains(link, "?lang=uk") || strings.Contains(link, "/uk/") {
+		pageLang = "uk"
+	}
+
+	var pTagText string
+	if pageLang != "uk" {
+		allUkrLinks := getAllSiteUkrLinks(link)
+
+		for _, newLink := range allUkrLinks {
+			visited.addLink(newLink)
+			collector.Visit(newLink)
+
+			pTagText = strings.Join(mum["p"], "\n")
+
+			if checkLang(pTagText, site.Title, "Ukrainian") {
+				pageLang = "uk"
+				break
+			}
+		}
+	} else {
+		visited.addLink(link)
+		collector.Visit(link)
+
+		pTagText = strings.Join(mum["p"], "\n")
+	}
+
+	if pageLang != "uk" {
+		return
+	}
 
 	collector.OnHTML("li", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
@@ -235,22 +223,25 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	visited.addLink(link)
 	collector.Visit(link)
 
-	//site.Hyperlinks = hyperlinksSet.dict
+	//found := visited.checkIfContains(link)
+	//
+	//if !found {
+	//	// *visited = append(*visited, link)
+	//	visited.addLink(link)
+	//	collector.Visit(link)
+	//} else {
+	//	fmt.Println("checkIfContains ", link, "visited -- ", found)
+	//	return
+	//}
+
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
 	}
 
-	pTagText := strings.Join(mum["p"], " \n ")
 	site.Content = strings.TrimSpace(pTagText +
 		strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n ") +
 		strings.Join(mum["div"], " \n "))
-
-	// _, found := Find(*visited, link)
-	// if !found {
-	// 	*visited = append(*visited, link)
-	// 	collector.Visit(link)
-	// }
 
 	if site.Link == "" {
 		return
@@ -285,14 +276,11 @@ L:
 func crawl(lst chan<- Site, linksQueue chan string, done, ks chan bool,
 	wg *sync.WaitGroup, visited *SafeSetOfLinks, failedLinks chan map[string]string, id int) {
 
-	nLink := 0
 	for true {
 		select {
 		case link := <-linksQueue:
 			// site Side
 			var failed error
-			nLink++
-			fmt.Println("nLink -- ", nLink)
 			failed = visitLink(lst, link, visited, id)
 
 			if failed == nil {
@@ -316,6 +304,10 @@ func crawl(lst chan<- Site, linksQueue chan string, done, ks chan bool,
 }
 
 func main() {
+	// TODO:
+	//  should clean from other languages "https://twitter.com/login/?lang=ru",
+	//   task manager -- save parsed links
+
 	// Perform health-check
 	//for {
 	//	_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
@@ -335,6 +327,9 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
+	// config part
+	numberOfWorkers := 1
+
 	// ------ get links from TaskManager
 	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + "/task_manager/api/v1.0/get_links")
 
@@ -353,54 +348,45 @@ func main() {
 	json.Unmarshal(body, &res)
 
 	// TODO: change after testing
-	// ukr news sites
-	//links := append(res.Links[:1], "https://spacenews.com/op-ed-in-defense-of-regulation/")
-	//links := append(res.Links[:1], "https://rozetka.com.ua/")
+	//links := append(res.Links[:20], "https://www.google.com/")
+	//links := res.Links
 
-	links := append(res.Links[:10],
-		"https://www.pravda.com.ua/articles/2021/05/2/7292251/",
-		"https://www.segodnya.ua/",
-		"https://tsn.ua/",
-		"https://24tv.ua/",
-		"https://censor.net/",
-		"https://sport.ua/",
-		"https://korrespondent.net/",
-		"https://newsyou.info/",
-		"https://from-ua.com/",
-		"https://www.rada.gov.ua/",
-		"https://www.ukr.net/",
-	)
-
-	// test social networks
-	links = append(links,
-		"https://uk-ua.facebook.com/login/web/",
+	links := append(res.Links[:1],
 		"https://twitter.com/login/?lang=uk",
-		"https://twitter.com/login/?lang=ru",
-		"https://www.facebook.com/login/web/",
-		"https://www.instagram.com/",
-		"https://twitter.com/",
-	)
-
-	// test sites of weather forecast
-	links = append(links,
-		"https://ua.sinoptik.ua/%D0%BF%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0-%D0%BB%D1%8C%D0%B2%D1%96%D0%B2",
-		"https://sinoptik.ua/",
-		"https://www.gismeteo.ua/ua/weather-lviv-4949/",
 		"https://rp5.ua/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D1%83_%D0%9B%D1%8C%D0%B2%D0%BE%D0%B2%D1%96_(%D0%B0%D0%B5%D1%80%D0%BE%D0%BF%D0%BE%D1%80%D1%82)",
+		"https://rst.ua/ukr/",
 	)
 
-	// test other sites
-	links = append(links,
-		"https://www.google.com/",
-		"https://www.youtube.com/",
-		"https://www.olx.ua/",
-		"https://rozetka.com.ua/",
-		"https://www.work.ua/",
-		"https://tabletki.ua/",
-		"https://www.ria.com/",
-		"https://rst.ua/ukr/",
-		"https://en.wikipedia.org/wiki/%D0%93%D0%BE%D0%BB%D0%BE%D0%B2%D0%BD%D0%B0_%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0",
-	)
+	//// test news sites, which are real and ukrainian
+	//links := append(res.Links[:10],
+	//	"https://www.pravda.com.ua/articles/2021/05/2/7292251/",
+	//	"https://tsn.ua/",
+	//	"https://24tv.ua/",
+	//	"https://from-ua.com/",
+	//	"https://www.rada.gov.ua/",
+	//	"https://www.ukr.net/",
+	//)
+	//
+	//// test true social networks
+	//links = append(links,
+	//	"https://uk-ua.facebook.com/login/web/",
+	//	"https://twitter.com/login/?lang=uk",
+	//)
+	//
+	//// test sites of weather forecast
+	//links = append(links,
+	//	"https://ua.sinoptik.ua/%D0%BF%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0-%D0%BB%D1%8C%D0%B2%D1%96%D0%B2",
+	//	"https://www.gismeteo.ua/ua/weather-lviv-4949/",
+	//	"https://rp5.ua/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D1%83_%D0%9B%D1%8C%D0%B2%D0%BE%D0%B2%D1%96_(%D0%B0%D0%B5%D1%80%D0%BE%D0%BF%D0%BE%D1%80%D1%82)",
+	//)
+	//
+	//// test other sites
+	//links = append(links,
+	//	"https://www.work.ua/",
+	//	"https://tabletki.ua/",
+	//	"https://www.ria.com/",
+	//	"https://rst.ua/ukr/",
+	//)
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)
@@ -434,8 +420,6 @@ func main() {
 	killSignal := make(chan bool)
 	allParsedLinks := newSafeSetOfLinks()
 
-	//numberOfWritingCrawlers := 2
-	//for i := 0; i < numberOfWritingCrawlers; i++ {
 	go func(killSignal chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
 		allParsedLinks *SafeSetOfLinks) {
 		wg.Add(1)
@@ -473,7 +457,7 @@ func main() {
 			case <-killSignal:
 				// TODO:
 				numFinishedRoutins++
-				if numFinishedRoutins == 2 {
+				if numFinishedRoutins == numberOfWorkers {
 					break F
 				}
 			}
@@ -490,14 +474,13 @@ func main() {
 	linksQueue := make(chan string)
 	done := make(chan bool)
 
-	numberOfWorkers := 2
-
 	// TODO: replace visited variable in crawl function
 	visited := newSafeSetOfLinks()
 	for i := 0; i < numberOfWorkers; i++ {
 		go crawl(sites, linksQueue, done, killSignal, &wg, visited, failedLinks, i)
 	}
 
+	numOfLinks := 0
 	for j := 0; j < numberOfJobs; j++ {
 		// select {
 		// case k:= linksQueue<-
@@ -505,16 +488,22 @@ func main() {
 
 		// TODO: check duplicate at the beginning when take domain
 		go func(j int) {
-			wg.Add(1)
-
 			// avoid http links and complete to a full link of domain
 			if !strings.Contains(links[j], "http") {
+				//wg.Add(2)
+				wg.Add(1)
+				numOfLinks += 2
+
 				linksQueue <- "https://" + links[j]
-				linksQueue <- "https://www." + links[j]
-			} else if strings.Contains(links[j], "https://") {
+
+				// TODO:
+				//linksQueue <- "https://www." + links[j]
+			} else {
+				wg.Add(1)
+				numOfLinks++
+
 				linksQueue <- links[j]
 			}
-
 		}(j)
 	}
 

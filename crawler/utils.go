@@ -66,7 +66,7 @@ func findCharPos(str string, char string, numOccurrences int, reversed bool) int
 }
 
 func getAllSiteUkrLinks(linkToChange string) []string {
-	// supported links changes -- www.example.com/es/, www.example.de,
+	// supported links changes -- www.example.com/uk/, www.example.com/ua/, www.example.de,
 	// de.example.com, www.example.com/about/?lang=en,
 	// www.example.com.ua, uk-ua.example.com;
 	// taken from here -- https://wpml.org/documentation/getting-started-guide/language-setup/language-url-options/
@@ -88,8 +88,10 @@ func getAllSiteUkrLinks(linkToChange string) []string {
 		}
 	}
 
-	// add new link change
+	// add new links change
 	arrayLinks = append(arrayLinks, linkToChange+"uk/")
+	arrayLinks = append(arrayLinks, linkToChange+"ua/")
+	arrayLinks = append(arrayLinks, linkToChange+"ukr/")
 
 	// add new link change
 	arrayLinks = append(arrayLinks, linkToChange+"?lang=uk/")
