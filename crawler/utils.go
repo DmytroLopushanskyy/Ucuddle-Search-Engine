@@ -33,6 +33,8 @@ func checkLang(pTagText string, siteTitle string, compareLang string) bool {
 	}
 
 	chunkLang := whatlanggo.DetectLang(textChunk)
+	fmt.Println("whatlanggo.Langs[chunkLang] -- ", whatlanggo.Langs[chunkLang])
+	fmt.Println("textChunk -- ", textChunk)
 	if whatlanggo.Langs[chunkLang] == compareLang {
 		return true
 	}

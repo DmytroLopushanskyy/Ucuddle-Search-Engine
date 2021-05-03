@@ -154,6 +154,14 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 			visited.addLink(newLink)
 			collector.Visit(newLink)
 
+			//content := strings.Join(mum["p"], "\n")
+			//lenText := len(content)
+			//if lenText == 0 {
+			//	if len(site.Title) != 0 {
+			//		content = site.Title
+			//	}
+			//}
+
 			pTagText = strings.Join(mum["p"], "\n")
 
 			if checkLang(pTagText, site.Title, "Ukrainian") {
@@ -161,23 +169,24 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 				break
 			}
 		}
-	} else {
-		visited.addLink(link)
-		collector.Visit(link)
-
-		pTagText = strings.Join(mum["p"], "\n")
 	}
+	//else {
+	//	visited.addLink(link)
+	//	collector.Visit(link)
+	//
+	//	pTagText = strings.Join(mum["p"], "\n")
+	//}
 
 	if pageLang != "uk" {
 		return
 	}
 
-	collector.OnHTML("li", func(element *colly.HTMLElement) {
+	collector.OnHTML("div", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
 		site.Link = strings.TrimSpace((element.Request).URL.String())
 	})
 
-	collector.OnHTML("div", func(element *colly.HTMLElement) {
+	collector.OnHTML("li", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
 		site.Link = strings.TrimSpace((element.Request).URL.String())
 	})
@@ -220,6 +229,7 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	// }
 	// })
 
+	fmt.Println("before visiting")
 	visited.addLink(link)
 	collector.Visit(link)
 
@@ -237,6 +247,10 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
+	}
+
+	if len(pTagText) == 0 {
+		pTagText = strings.Join(mum["p"], "\n")
 	}
 
 	site.Content = strings.TrimSpace(pTagText +
@@ -307,6 +321,7 @@ func main() {
 	// TODO:
 	//  should clean from other languages "https://twitter.com/login/?lang=ru",
 	//   task manager -- save parsed links
+	//   if .ua/ -- check lang and add lang to Site.lang
 
 	// Perform health-check
 	//for {
@@ -351,21 +366,25 @@ func main() {
 	//links := append(res.Links[:20], "https://www.google.com/")
 	//links := res.Links
 
-	links := append(res.Links[:1],
-		"https://twitter.com/login/?lang=uk",
-		"https://rp5.ua/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D1%83_%D0%9B%D1%8C%D0%B2%D0%BE%D0%B2%D1%96_(%D0%B0%D0%B5%D1%80%D0%BE%D0%BF%D0%BE%D1%80%D1%82)",
-		"https://rst.ua/ukr/",
-	)
-
-	//// test news sites, which are real and ukrainian
-	//links := append(res.Links[:10],
-	//	"https://www.pravda.com.ua/articles/2021/05/2/7292251/",
-	//	"https://tsn.ua/",
-	//	"https://24tv.ua/",
-	//	"https://from-ua.com/",
-	//	"https://www.rada.gov.ua/",
-	//	"https://www.ukr.net/",
+	//links := append(res.Links[:1],
+	//	"https://twitter.com/login/?lang=uk",
+	//	"https://rp5.ua/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D1%83_%D0%9B%D1%8C%D0%B2%D0%BE%D0%B2%D1%96_(%D0%B0%D0%B5%D1%80%D0%BE%D0%BF%D0%BE%D1%80%D1%82)",
+	//	"https://rst.ua/ukr/",
 	//)
+
+	//links := []string {
+	//	"https://rp5.ua/%D0%9F%D0%BE%D0%B3%D0%BE%D0%B4%D0%B0_%D1%83_%D0%9B%D1%8C%D0%B2%D0%BE%D0%B2%D1%96_(%D0%B0%D0%B5%D1%80%D0%BE%D0%BF%D0%BE%D1%80%D1%82)",
+	//}
+
+	// test news sites, which are real and ukrainian
+	links := append(res.Links[:10],
+		"https://www.pravda.com.ua/articles/2021/05/2/7292251/",
+		"https://tsn.ua/",
+		"https://24tv.ua/",
+		"https://from-ua.com/",
+		"https://www.rada.gov.ua/",
+		"https://www.ukr.net/",
+	)
 	//
 	//// test true social networks
 	//links = append(links,
