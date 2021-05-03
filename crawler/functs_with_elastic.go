@@ -229,6 +229,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 	*dataArr = (*dataArr)[:0]
 	m.Unlock()
 
+	log.Println("insert in elastic")
 	log.Println(strings.Repeat("-", 37))
 }
 
@@ -264,7 +265,7 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 		fmt.Println("_id", result.Map()["_id"])
 		fmt.Println("site_id -- ", result.Map()["_source"].Map()["site_id"])
 		fmt.Println(result.Map()["_source"].Map()["added_at_time"])
-		fmt.Println("\n")
+		fmt.Println()
 	}
 
 	lastIdx := results[0].Map()
