@@ -1,16 +1,37 @@
-from datetime import datetime
 import os
-import logging
 
+import elasticsearch
+
+import config
+import logging
 import jsonpickle
+
+from datetime import datetime
 from elasticsearch import Elasticsearch
 
 
 class TaskManager:
     def __init__(self):
         self.es_client = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
-                            http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
+                                       http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
         # self.es_client = Elasticsearch()
+
+        index_elastic_links = os.environ["INDEXES_ELASTIC_LINKS"]
+        self.index_elastic_links = index_elastic_links.split()[config.POS_ELASTIC_INDEX_LINKS]
+        self.index_elastic_sites = os.environ["INDEX_ELASTIC_COLLECTED_DATA"]
+
+        # self.create_site_index_first_entry()
+        self.last_id_in_index_sites = -1
+
+        try:
+            res = self.es_client.get(index=self.index_elastic_sites, id=0)
+            print("res -- ", res)
+            index_exist = True
+        except elasticsearch.exceptions.NotFoundError:
+            index_exist = False
+
+        if index_exist:
+            self.last_id_in_index_sites = self.get_last_site_id_in_index()
 
     def create_new_index(self, index_name):
         logging.debug("Creating new index")
@@ -23,47 +44,128 @@ class TaskManager:
         logging.debug("Elastic response for creating new index: ", res)
         return 200
 
-    # def add_new_data_in_index(self, index_name, data):
-    #     self.es_client.index(index=index_name, id=42, body=data)
-
     def retrieve_links(self, num_links):
         query = {
             "query": {
-                "match_all": {}
+                "bool": {
+                    "must": [
+                        {"term": {"taken": False}},
+                        {"term": {"parsed": False}}
+                    ]
+                 }
             },
-
             "size": num_links,
 
+            # TODO: maybe make sort if necessary
             "sort": {
-                "added_at_time": {
-                    "order": "desc",
-                }
+                "link_id": {
+                    "order": "asc",
+                },
             }
         }
+
         res = self.es_client.search(
-            index=os.environ['INDEX_ELASTIC_LINKS'],
-            body=jsonpickle.encode(query, unpicklable=False)
+            index=self.index_elastic_links,
+            body=jsonpickle.encode(query, unpicklable=False),
         )
+
+        print("retrieve_links res -- ", res)
 
         logging.debug("res", res)
         links = dict()
         links["links"] = []
         for hit in res["hits"]["hits"]:
-            links["links"].append(hit["_source"]["link"])
+            links["links"].append([hit["_source"]["link"], hit["_id"]])
+            self.set_parsed_link(hit["_id"], 0, True)
 
         return links
 
-    def add_new_links(self, links_lst, index_name):
+    def add_new_links(self, links_lst):
         # TODO
-        last_link_id = 0
-        last_link_id += 1
+        last_link_id = self.get_last_link_id()
+
+        # last_link_id = 0
+        # last_link_id += 1
         for link in links_lst:
             res = self.es_client.index(
-                index=index_name, id=last_link_id,
-                body={"link": link, "added_at_time": datetime.now()}
+                index=self.index_elastic_links,
+                id=last_link_id,
+                body={
+                    "link_id": last_link_id,
+                    "link": link,
+                    "taken": False,
+                    "parsed": False,
+                    "added_at_time": datetime.now()
+                },
+                request_timeout=60
             )
 
-            print("es_client insert link response -- ", res["result"])
             last_link_id += 1
 
+        self.update_last_link_id(last_link_id)
         print("All links were successfully added !!!")
+
+    def get_last_link_id(self):
+        index_name = os.environ['INDEX_CONFIG_ELASTIC']
+        res = self.es_client.get(index=index_name, id=0)
+
+        print("get_last_link_id -- ", res)
+
+        return res["_source"][os.environ["LAST_LINK_ID_KEY_ELASTIC"]]
+
+    def update_last_link_id(self, last_id):
+        doc = {
+            os.environ["LAST_LINK_ID_KEY_ELASTIC"]: last_id,
+        }
+
+        # TODO: make update
+        res = self.es_client.index(
+            index=os.environ['INDEX_CONFIG_ELASTIC'],
+            id=0,
+            body=doc
+        )
+
+        print(res['result'])
+
+    def set_parsed_link(self, parsed_link_id, body_key, body_value):
+        if body_key == 0:
+            body_key = "taken"
+
+        elif body_key == 1:
+            body_key = "parsed"
+
+        res = self.es_client.update(
+            index=self.index_elastic_links,
+            id=parsed_link_id,
+            body={
+                "doc": {
+                    body_key: body_value
+                }
+            }
+        )
+
+        print("set_parsed_link res -- ", res)
+        
+    def get_last_site_id_in_index(self):
+        query = {
+            "query": {
+                "match_all": {},
+            },
+
+            "size": 1,
+
+            "sort": {
+              "site_id": {
+                    "order": "desc",
+              },
+            },
+        }
+
+        res = self.es_client.search(
+            index=self.index_elastic_sites,
+            body=jsonpickle.encode(query, unpicklable=False),
+        )
+
+        print("get_last_doc_id() res -- ", res)
+
+        return res["hits"]["hits"][0]["_source"]["site_id"] + 1

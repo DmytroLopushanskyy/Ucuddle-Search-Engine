@@ -8,8 +8,10 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
+	"io/ioutil"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -64,14 +66,11 @@ func elasticConnect() *elasticsearch.Client {
 func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	var buf bytes.Buffer
 
-	// TODO: check https://stackoverflow.com/questions/55372330/what-does-limit-of-total-fields-1000-in-index-has-been-exceeded-means-in
-	//  if it cause a problem
 	query := map[string]interface{}{
 		"settings": map[string]interface{}{
 			"analysis": map[string]interface{}{
 				"analyzer": "english",
 			},
-			"index.mapping.total_fields.limit": 3000,
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -125,8 +124,6 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 func setIndexFirstId(es *elasticsearch.Client, idxName string,
 	titleStr string, contentStr string) {
 	var dataArr []Site
-	var indexLastIdInt uint64
-	indexLastIdInt = 1
 
 	res, err := es.Indices.Get([]string{idxName})
 	if err != nil { // SKIP
@@ -150,27 +147,52 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 
 		// TODO: exist
 		setIndexAnalyzer(es, idxName)
-		elasticInsert(es, &dataArr, &idxName, &indexLastIdInt)
+		elasticInsert(es, &dataArr, &idxName, 1)
 	} else {
 		fmt.Println("\n\n ========== Index already exists")
 	}
 }
 
 func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string,
-	indexLastId *uint64) {
-	fmt.Println("\n elasticInsert start")
+	externalLastOd uint64) {
+
 	var (
 		wg sync.WaitGroup
 	)
 
 	var mu sync.Mutex
+	var curIndexLastId uint64
+
+	if externalLastOd == 0 {
+		// ------ get last_site_id from TaskManager
+		resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_GET_LAST_SITE_ID"))
+
+		// check for response error
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		res := responseLastSiteId{}
+		json.Unmarshal(body, &res)
+
+		curIndexLastId = res.LastSiteId
+	} else {
+		curIndexLastId = externalLastOd
+	}
+	fmt.Println("elasticInsert() curIndexLastId -- ", curIndexLastId)
 
 	// Index documents concurrently
 	//
 	for i, site := range *dataArr {
 		wg.Add(1)
 
-		go func(nDoc int, site2 Site, mu *sync.Mutex) {
+		go func(nDoc int, site2 Site, mu *sync.Mutex, indexLastId *uint64) {
 			defer wg.Done()
 
 			mu.Lock()
@@ -224,9 +246,9 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
 				log.Println("response -- ", res)
 			}
-		}(i, site, &mu)
+		}(i, site, &mu, &curIndexLastId)
 
-		fmt.Println(site.Title, " inserted")
+		fmt.Println(site.Link, " inserted")
 	}
 	wg.Wait()
 

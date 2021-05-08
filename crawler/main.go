@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/gocolly/colly"
@@ -11,7 +12,9 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"sync/atomic"
+	"time"
 
 	//"time"
 
@@ -65,8 +68,15 @@ func readLines(path string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (failed error) {
-	fmt.Println("parsing link -- ", link)
+func visitLink(lst chan<- Site, mainLink string,
+	visited *SafeSetOfLinks, id int, numInternalPage *uint64) (failed error) {
+
+	var MaxInternalPages uint64
+	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
+	if *numInternalPage >= MaxInternalPages {
+		log.Println("Achieved max numInternalPage \n\n")
+		return
+	}
 
 	var site Site
 	hyperlinksSet := NewSet()
@@ -168,14 +178,15 @@ func visitLink(lst chan<- Site, link string, visited *SafeSetOfLinks, id int) (f
 	// }
 	// })
 
-	found := visited.checkIfContains(link)
+	found := visited.checkIfContains(mainLink)
 
 	if !found {
 		// *visited = append(*visited, link)
-		visited.addLink(link)
-		collector.Visit(link)
+		visited.addLink(mainLink)
+		collector.Visit(mainLink)
+		atomic.AddUint64(numInternalPage, 1)
 	} else {
-		fmt.Println("checkIfContains ", link, "visited -- ", found)
+		fmt.Println("checkIfContains ", mainLink, "visited -- ", found)
 		return
 	}
 
@@ -208,22 +219,18 @@ L:
 	}
 
 	//fmt.Println("visited -- ", visited)
-	return
-
-	//for _, s := range site.Hyperlinks {
-	//	visitLink(lst, s, visited, id)
-	//	// TODO - delete
-	//	//break
-	//}
-	//
-	//if os.Getenv("DEBUG") == "true" {
-	//	fmt.Println("after cycle")
-	//}
-	//
 	//return
+
+	for _, s := range site.Hyperlinks {
+		visitLink(lst, s, visited, id, numInternalPage)
+		// TODO - delete
+		//break
+	}
+
+	return
 }
 
-func crawl(lst chan<- Site, linksQueue chan string, done, ks chan bool,
+func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 	wg *sync.WaitGroup, visited *SafeSetOfLinks, failedLinks chan map[string]string, id int) {
 
 	for true {
@@ -231,16 +238,35 @@ func crawl(lst chan<- Site, linksQueue chan string, done, ks chan bool,
 		case link := <-linksQueue:
 			// site Side
 			var failed error
-			failed = visitLink(lst, link, visited, id)
+			var numInternalPage uint64
+			numInternalPage = 0
+			failed = visitLink(lst, link[0], visited, id, &numInternalPage)
 
 			if failed == nil {
 
 			}
 
+			// TODO: maybe add in if failed == nil
+			// ------ set link as parsed in TaskManager
+			postBody, _ := json.Marshal(map[string]string{
+				"parsed_link_id": link[1],
+			})
+			responseBody := bytes.NewBuffer(postBody)
+
+			resp, err := http.Post(os.Getenv("TASK_MANAGER_URL") +
+				os.Getenv("TASK_MANAGER_ENDPOINT_SET_PARSED_LINK"), "application/json",
+				responseBody)
+
+			// check for response error
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer resp.Body.Close()
+
 			done <- true
 			if failed != nil {
 				m := make(map[string]string)
-				m["link"] = link
+				m["link"] = link[0]
 				m["error"] = failed.Error()
 				failedLinks <- m
 			}
@@ -267,14 +293,17 @@ func main() {
 	// Elasticsearch and Task Manager have started. The program begins
 
 	// load .env file
-	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+
+	startCode := time.Now()
 	//err := godotenv.Load(path.Join("crawlers-env.env"))
+	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
 	// ------ get links from TaskManager
-	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + "/task_manager/api/v1.0/get_links")
+	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_GET_LINKS"))
 
 	// check for response error
 	if err != nil {
@@ -293,8 +322,12 @@ func main() {
 	// ================== setup configuration ==================
 	// TODO: change after testing
 	//links := append(res.Links[:20], "https://www.google.com/")
-	links := res.Links[:45]
+	links := res.Links
 	fmt.Println("start len(links) -- ", len(links))
+	//fmt.Println("links -- ", links)
+
+	//return
+
 	numberOfWorkers := 2
 	var numberOfJobs = len(links)
 
@@ -311,12 +344,30 @@ func main() {
 	titleStr := "start index"
 	contentStr := "first content1"
 	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
-
-	indexLastIdInt := indexGetLastId(esClient, insertIdxName)
-
-	indexLastIdInt += 1
-	fmt.Println("my indexLastId", indexLastIdInt)
 	// end elastic connection
+
+
+	// ------ set last site id from TaskManager
+	postBody, _ := json.Marshal(map[string]string{
+		"1":  "1",
+	})
+	responseBody := bytes.NewBuffer(postBody)
+	resp, err = http.Post(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
+		"application/json", responseBody)
+
+	// check for response error
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res = responseLinks{}
+	json.Unmarshal(body, &res)
 
 	// used for testing
 	//if false {
@@ -340,22 +391,16 @@ func main() {
 			select {
 			// take from channel of parsed sites and insert in elasticsearch
 			case site := <-sites:
-				//_, found := sliceSites.checkIfContains(site)
-				//if !found {
-				//	sliceSites.addSite(site)
-				//}
-
 				found := allParsedLinks.checkIfContains(site.Link)
-				fmt.Println("found in allParsedLinks -- ", found)
 				if !found {
-					fmt.Println("add Link -- ", site.Link)
 					allParsedLinks.addLink(site.Link)
 					sliceSites.addSite(site)
 					atomic.AddUint64(numAddedSites, 1)
 				}
 
-				if len(sliceSites.actualSites) >= 5 {
-					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
+				packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE"))
+				if len(sliceSites.actualSites) >= packageSize {
+					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
 				}
 
 			case <-finish:
@@ -375,13 +420,13 @@ func main() {
 		fmt.Println("len(sites) -- ", len(sites))
 
 		if len(sliceSites.actualSites) != 0 {
-			elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
+			elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
 		}
 
 		defer wg.Done()
-	}(finish, &sliceSites, sites, allParsedLinks, &numAddedSites)
+	} (finish, &sliceSites, sites, allParsedLinks, &numAddedSites)
 
-	linksQueue := make(chan string)
+	linksQueue := make(chan [2]string)
 	done := make(chan bool)
 
 	// TODO: replace visited variable in crawl function
@@ -396,8 +441,8 @@ func main() {
 			wg.Add(1)
 
 			// avoid http links and complete to a full link of domain
-			if !strings.Contains(links[j], "http") {
-				linksQueue <- "https://" + links[j]
+			if !strings.Contains(links[j][0], "http") {
+				linksQueue <- [2]string {"https://" + links[j][0], links[j][1]}
 			} else {
 				linksQueue <- links[j]
 			}
@@ -408,7 +453,7 @@ func main() {
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
 	}
-	fmt.Println("len(done) -- ", len(done))
+	fmt.Println("at the end of code len(done) -- ", len(done))
 
 	close(killSignal)
 	close(finish)
@@ -417,7 +462,10 @@ func main() {
 	close(sites)
 	close(failedLinks)
 
-	fmt.Println("numAddedSites -- ", numAddedSites)
+	fmt.Println("Total numAddedSites -- ", numAddedSites)
+	finishedCode := time.Now()
+
+	fmt.Println("Total work time -- ", finishedCode.Sub(startCode))
 
 	//time.Sleep(1)
 	//crawl(links[numJobs-1], jobs, results, &sites)

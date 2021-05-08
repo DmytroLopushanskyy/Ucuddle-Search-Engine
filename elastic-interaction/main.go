@@ -285,6 +285,14 @@ func main() {
 
 			deleteIndexes(esClient, strings.Split(indexes, " "))
 
+		} else if input == "8" {
+			fmt.Println("Enter index name to create index for links")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
+
+			createIndexForLinks(esClient, idxName)
+
 		}
 	}
 }
