@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sync/atomic"
+
 	//"time"
 
 	//"strconv"
@@ -206,19 +208,19 @@ L:
 	}
 
 	//fmt.Println("visited -- ", visited)
-	//return
-
-	for _, s := range site.Hyperlinks {
-		visitLink(lst, s, visited, id)
-		// TODO - delete
-		//break
-	}
-
-	if os.Getenv("DEBUG") == "true" {
-		fmt.Println("after cycle")
-	}
-
 	return
+
+	//for _, s := range site.Hyperlinks {
+	//	visitLink(lst, s, visited, id)
+	//	// TODO - delete
+	//	//break
+	//}
+	//
+	//if os.Getenv("DEBUG") == "true" {
+	//	fmt.Println("after cycle")
+	//}
+	//
+	//return
 }
 
 func crawl(lst chan<- Site, linksQueue chan string, done, ks chan bool,
@@ -265,8 +267,8 @@ func main() {
 	// Elasticsearch and Task Manager have started. The program begins
 
 	// load .env file
-	//err := godotenv.Load(path.Join("..", "crawlers-env.env"))
-	err := godotenv.Load(path.Join("crawlers-env.env"))
+	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+	//err := godotenv.Load(path.Join("crawlers-env.env"))
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -288,9 +290,13 @@ func main() {
 	res := responseLinks{}
 	json.Unmarshal(body, &res)
 
+	// ================== setup configuration ==================
 	// TODO: change after testing
 	//links := append(res.Links[:20], "https://www.google.com/")
-	links := res.Links
+	links := res.Links[:45]
+	fmt.Println("start len(links) -- ", len(links))
+	numberOfWorkers := 2
+	var numberOfJobs = len(links)
 
 	if os.Getenv("DEBUG") == "true" {
 		fmt.Println("response Links  -- ", links)
@@ -301,7 +307,6 @@ func main() {
 	// elastic connection
 	esClient := elasticConnect()
 
-	// TODO: uncomment
 	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
 	titleStr := "start index"
 	contentStr := "first content1"
@@ -315,22 +320,20 @@ func main() {
 
 	// used for testing
 	//if false {
-	var numberOfJobs = len(links)
 	var wg sync.WaitGroup
 
 	sliceSites := SafeListOfSites{actualSites: make([]Site, 0)}
 	sites := make(chan Site, len(links)+1)
 	failedLinks := make(chan map[string]string, len(links)+1)
 	killSignal := make(chan bool)
+	finish := make(chan bool)
+
 	allParsedLinks := newSafeSetOfLinks()
 
-	//numberOfWritingCrawlers := 2
-	//for i := 0; i < numberOfWritingCrawlers; i++ {
-	go func(killSignal chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
-		allParsedLinks *SafeSetOfLinks) {
+	var numAddedSites uint64
+	go func(finish chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
+		allParsedLinks *SafeSetOfLinks, numAddedSites *uint64) {
 		wg.Add(1)
-
-		numFinishedRoutins := 0
 
 	F:
 		for true {
@@ -348,39 +351,38 @@ func main() {
 					fmt.Println("add Link -- ", site.Link)
 					allParsedLinks.addLink(site.Link)
 					sliceSites.addSite(site)
+					atomic.AddUint64(numAddedSites, 1)
 				}
 
 				if len(sliceSites.actualSites) >= 5 {
-					//fmt.Println("links to insert in elastic")
-					//for _, s := range sliceSites.actualSites {
-					//	fmt.Println(s.Link)
-					//}
-					//fmt.Println("-=-=-=-=-=-=-=-=-=-==-=-")
-
 					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
 				}
 
-			case <-killSignal:
-				// TODO:
-				numFinishedRoutins++
-				if numFinishedRoutins == 2 {
+			case <-finish:
+				if len(sites) == 0 {
 					break F
 				}
+				//case <-killSignal:
+				//	// TODO:
+				//	numFinishedRoutins++
+				//	if numFinishedRoutins == numberOfWorkers {
+				//		break F
+				//	}
+
 			}
 		}
+
+		fmt.Println("len(sites) -- ", len(sites))
 
 		if len(sliceSites.actualSites) != 0 {
 			elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, &indexLastIdInt)
 		}
 
 		defer wg.Done()
-	}(killSignal, &sliceSites, sites, allParsedLinks)
-	//}
+	}(finish, &sliceSites, sites, allParsedLinks, &numAddedSites)
 
 	linksQueue := make(chan string)
 	done := make(chan bool)
-
-	numberOfWorkers := 2
 
 	// TODO: replace visited variable in crawl function
 	visited := newSafeSetOfLinks()
@@ -389,10 +391,6 @@ func main() {
 	}
 
 	for j := 0; j < numberOfJobs; j++ {
-		// select {
-		// case k:= linksQueue<-
-		// }
-
 		// TODO: check duplicate at the beginning when take domain
 		go func(j int) {
 			wg.Add(1)
@@ -410,12 +408,16 @@ func main() {
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
 	}
+	fmt.Println("len(done) -- ", len(done))
 
 	close(killSignal)
+	close(finish)
 	wg.Wait()
 
 	close(sites)
 	close(failedLinks)
+
+	fmt.Println("numAddedSites -- ", numAddedSites)
 
 	//time.Sleep(1)
 	//crawl(links[numJobs-1], jobs, results, &sites)

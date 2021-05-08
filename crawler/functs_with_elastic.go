@@ -163,16 +163,21 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 		wg sync.WaitGroup
 	)
 
+	var mu sync.Mutex
+
 	// Index documents concurrently
 	//
 	for i, site := range *dataArr {
 		wg.Add(1)
 
-		go func(nDoc int, site2 Site) {
+		go func(nDoc int, site2 Site, mu *sync.Mutex) {
 			defer wg.Done()
 
+			mu.Lock()
 			site2.SiteId = *indexLastId
 			*indexLastId++
+			mu.Unlock()
+			//atomic.AddUint64(indexLastId, 1)
 
 			site2.AddedAt = time.Now().UTC()
 
@@ -195,6 +200,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 			for j := 0; j < 5; j++ {
 				time.Sleep(time.Duration(waitResponseTime) * time.Second)
 
+				// for testing
 				//if i == 2 {
 				res, err = req.Do(context.Background(), es)
 				//} else {
@@ -218,16 +224,15 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
 				log.Println("response -- ", res)
 			}
-		}(i, site)
+		}(i, site, &mu)
 
 		fmt.Println(site.Title, " inserted")
 	}
 	wg.Wait()
 
-	var m sync.Mutex
-	m.Lock()
+	mu.Lock()
 	*dataArr = (*dataArr)[:0]
-	m.Unlock()
+	mu.Unlock()
 
 	log.Println(strings.Repeat("-", 37))
 }
