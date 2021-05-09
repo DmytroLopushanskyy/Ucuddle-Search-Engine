@@ -4,20 +4,16 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path"
 	"strconv"
 	"sync/atomic"
 	"time"
-
-	//"time"
-
 	//"strconv"
 	"strings"
 	"sync"
@@ -27,7 +23,7 @@ import (
 func writeSliceJSON(data []Site, writefile string) {
 	file, err := json.MarshalIndent(data, "", " ")
 	if err != nil {
-		log.Println("error while writing a file")
+		standardLogger.Println("error while writing a file")
 		return
 	}
 
@@ -46,7 +42,7 @@ func writeChannelJSON(data <-chan Site, writefile string) {
 
 	file, err := json.MarshalIndent(allSites, "", " ")
 	if err != nil {
-		log.Println("error while writing a file")
+		standardLogger.Println("error while writing a file")
 		return
 	}
 	_ = ioutil.WriteFile(writefile, file, 0644)
@@ -74,7 +70,7 @@ func visitLink(lst chan<- Site, mainLink string,
 	var MaxInternalPages uint64
 	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
 	if *numInternalPage >= MaxInternalPages {
-		log.Println("Achieved max numInternalPage \n\n")
+		//standardLogger.Println("Achieved max numInternalPage \n\n")
 		return
 	}
 
@@ -89,20 +85,20 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	collector.OnRequest(func(request *colly.Request) {
 		// if (request.URL.String() =="https://oneessencehealing.com/"){
-		fmt.Println("Visiting", request.URL.String())
+		standardLogger.Println("Visiting", request.URL.String())
 		// }
 	})
 
 	collector.OnResponse(func(response *colly.Response) {
 		if response.StatusCode != 200 {
-			fmt.Println(response.StatusCode)
+			standardLogger.Println(response.StatusCode)
 		}
 	})
 
 	collector.OnError(func(response *colly.Response, err error) {
 		failed = err
 		if response.StatusCode != 200 && response.StatusCode != 0 {
-			fmt.Println(response.StatusCode)
+			standardLogger.Println(response.StatusCode)
 		}
 	})
 
@@ -155,6 +151,10 @@ func visitLink(lst chan<- Site, mainLink string,
 				link = link[:startLinkParameters]
 			}
 
+			if link[len(link)- 1: len(link)] == "/" {
+				link = link[:len(link) - 1]
+			}
+
 			hyperlinksSet.Add(link)
 		}
 
@@ -186,7 +186,7 @@ func visitLink(lst chan<- Site, mainLink string,
 		collector.Visit(mainLink)
 		atomic.AddUint64(numInternalPage, 1)
 	} else {
-		fmt.Println("checkIfContains ", mainLink, "visited -- ", found)
+		standardLogger.Println("checkIfContains ", mainLink, "visited -- ", found)
 		return
 	}
 
@@ -208,6 +208,10 @@ func visitLink(lst chan<- Site, mainLink string,
 		return
 	}
 
+	if site.Link[len(site.Link)- 1: len(site.Link)] == "/" {
+		site.Link = site.Link[:len(site.Link) - 1]
+	}
+
 L:
 	for true {
 		select {
@@ -218,13 +222,10 @@ L:
 		}
 	}
 
-	//fmt.Println("visited -- ", visited)
 	//return
 
 	for _, s := range site.Hyperlinks {
 		visitLink(lst, s, visited, id, numInternalPage)
-		// TODO - delete
-		//break
 	}
 
 	return
@@ -246,23 +247,6 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 
 			}
 
-			// TODO: maybe add in if failed == nil
-			// ------ set link as parsed in TaskManager
-			postBody, _ := json.Marshal(map[string]string{
-				"parsed_link_id": link[1],
-			})
-			responseBody := bytes.NewBuffer(postBody)
-
-			resp, err := http.Post(os.Getenv("TASK_MANAGER_URL") +
-				os.Getenv("TASK_MANAGER_ENDPOINT_SET_PARSED_LINK"), "application/json",
-				responseBody)
-
-			// check for response error
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer resp.Body.Close()
-
 			done <- true
 			if failed != nil {
 				m := make(map[string]string)
@@ -271,119 +255,32 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 				failedLinks <- m
 			}
 
+			// TODO: maybe add in if failed == nil
+			setParsedLink(link[1])
+
 			defer wg.Done()
 		case <-ks:
 			return
 		}
 	}
-
 }
 
-func main() {
-	// Perform health-check
-	//for {
-	//	_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
-	//	_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
-	//	fmt.Println("Waiting for Elasticsearch and Task Manager to be alive.")
-	//	if err_elastic == nil && err_manager == nil {
-	//		break
-	//	}
-	//	time.Sleep(time.Second)
-	//}
-	// Elasticsearch and Task Manager have started. The program begins
+func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, links *[][2]string,
+	numberOfWorkers int, numberOfJobs int, lenLinks int) uint64 {
 
-	// load .env file
-
-	startCode := time.Now()
-	//err := godotenv.Load(path.Join("crawlers-env.env"))
-	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
-
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	// ------ get links from TaskManager
-	resp, err := http.Get(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_GET_LINKS"))
-
-	// check for response error
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	res := responseLinks{}
-	json.Unmarshal(body, &res)
-
-	// ================== setup configuration ==================
-	// TODO: change after testing
-	//links := append(res.Links[:20], "https://www.google.com/")
-	links := res.Links
-	fmt.Println("start len(links) -- ", len(links))
-	//fmt.Println("links -- ", links)
-
-	//return
-
-	numberOfWorkers := 2
-	var numberOfJobs = len(links)
-
-	if os.Getenv("DEBUG") == "true" {
-		fmt.Println("response Links  -- ", links)
-	}
-
-	// ------ end getting links from TaskManager
-
-	// elastic connection
-	esClient := elasticConnect()
-
-	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
-	titleStr := "start index"
-	contentStr := "first content1"
-	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
-	// end elastic connection
-
-
-	// ------ set last site id from TaskManager
-	postBody, _ := json.Marshal(map[string]string{
-		"1":  "1",
-	})
-	responseBody := bytes.NewBuffer(postBody)
-	resp, err = http.Post(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
-		"application/json", responseBody)
-
-	// check for response error
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	res = responseLinks{}
-	json.Unmarshal(body, &res)
-
-	// used for testing
-	//if false {
 	var wg sync.WaitGroup
 
 	sliceSites := SafeListOfSites{actualSites: make([]Site, 0)}
-	sites := make(chan Site, len(links)+1)
-	failedLinks := make(chan map[string]string, len(links)+1)
+	sites := make(chan Site, lenLinks+1)
+	failedLinks := make(chan map[string]string, lenLinks+1)
 	killSignal := make(chan bool)
-	finish := make(chan bool)
+	finishElasticInsert := make(chan bool)
 
 	allParsedLinks := newSafeSetOfLinks()
 
-	var numAddedSites uint64
-	go func(finish chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
-		allParsedLinks *SafeSetOfLinks, numAddedSites *uint64) {
+	var numAddedPages uint64
+	go func(finishElasticInsert chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
+		allParsedLinks *SafeSetOfLinks, numAddedPages *uint64) {
 		wg.Add(1)
 
 	F:
@@ -395,7 +292,7 @@ func main() {
 				if !found {
 					allParsedLinks.addLink(site.Link)
 					sliceSites.addSite(site)
-					atomic.AddUint64(numAddedSites, 1)
+					atomic.AddUint64(numAddedPages, 1)
 				}
 
 				packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE"))
@@ -403,28 +300,21 @@ func main() {
 					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
 				}
 
-			case <-finish:
+			case <-finishElasticInsert:
 				if len(sites) == 0 {
 					break F
 				}
-				//case <-killSignal:
-				//	// TODO:
-				//	numFinishedRoutins++
-				//	if numFinishedRoutins == numberOfWorkers {
-				//		break F
-				//	}
-
 			}
 		}
 
-		fmt.Println("len(sites) -- ", len(sites))
+		standardLogger.Println("len(sites) -- ", len(sites))
 
 		if len(sliceSites.actualSites) != 0 {
 			elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
 		}
 
 		defer wg.Done()
-	} (finish, &sliceSites, sites, allParsedLinks, &numAddedSites)
+	} (finishElasticInsert, &sliceSites, sites, allParsedLinks, &numAddedPages)
 
 	linksQueue := make(chan [2]string)
 	done := make(chan bool)
@@ -441,10 +331,10 @@ func main() {
 			wg.Add(1)
 
 			// avoid http links and complete to a full link of domain
-			if !strings.Contains(links[j][0], "http") {
-				linksQueue <- [2]string {"https://" + links[j][0], links[j][1]}
+			if !strings.Contains((*links)[j][0], "http") {
+				linksQueue <- [2]string {"https://" + (*links)[j][0], (*links)[j][1]}
 			} else {
-				linksQueue <- links[j]
+				linksQueue <- (*links)[j]
 			}
 
 		}(j)
@@ -453,19 +343,125 @@ func main() {
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
 	}
-	fmt.Println("at the end of code len(done) -- ", len(done))
+	standardLogger.Println("at the end of code len(done) -- ", len(done))
 
 	close(killSignal)
-	close(finish)
+	close(finishElasticInsert)
 	wg.Wait()
 
 	close(sites)
 	close(failedLinks)
 
-	fmt.Println("Total numAddedSites -- ", numAddedSites)
-	finishedCode := time.Now()
+	return numAddedPages
+}
 
-	fmt.Println("Total work time -- ", finishedCode.Sub(startCode))
+func main() {
+	// Perform health-check
+	//for {
+	//	_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
+	//	_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
+	//	fmt.Println("Waiting for Elasticsearch and Task Manager to be alive.")
+	//	if err_elastic == nil && err_manager == nil {
+	//		break
+	//	}
+	//	time.Sleep(time.Second)
+	//}
+	// Elasticsearch and Task Manager have started. The program begins
+	startCode := time.Now()
+
+	// load .env file
+	err := godotenv.Load(path.Join("shared_vars.env"))
+	//err := godotenv.Load(path.Join("..", "shared_vars.env"))
+
+	if err != nil {
+		standardLogger.Fatal("Error loading .env file")
+	}
+
+	// ================== setup configuration ==================
+	numberOfWorkers := 8
+
+	// ================== elastic connection ==================
+	esClient := elasticConnect()
+
+	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
+	titleStr := "start index"
+	contentStr := "first content1"
+	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
+	// end elastic connection
+
+	// ================== set last site id in Task Manager ==================
+	postBody, _ := json.Marshal(map[string]string {
+		"1":  "1",
+	})
+	responseBody := bytes.NewBuffer(postBody)
+	http.Post(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
+		"application/json", responseBody)
+
+
+	var totalNumAddedPages uint64
+	var continueFlag bool
+	iteration := 0
+	indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
+
+	for j := 0; j < len(indexesElasticLinks); j++ {
+		endedIdxLinksCounter := 0
+
+		for true {
+			iteration++
+
+			standardLogger.Println("Start getDomainsToParse global iteration ", iteration)
+
+			// ================== get links from TaskManager ==================
+			res := responseLinks{}
+
+			if endedIdxLinksCounter == 0 {
+				getDomainsToParse(&res, false)
+				standardLogger.Println("get domains taken: false, parsed: false")
+			} else if endedIdxLinksCounter == 1 {
+				getDomainsToParse(&res, true)
+				standardLogger.Println("get domains taken: true, parsed: false")
+			} else {
+				standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
+				break
+			}
+
+			continueFlag = false
+
+			Block {
+				Try: func() {
+					if res.Links[0][0] == "links ended" {
+						endedIdxLinksCounter++
+						continueFlag = true
+					}
+				},
+				Catch: func(e Exception) {
+					standardLogger.Warn("Caught %v\n", e)
+					continueFlag = true
+				},
+			}.Do()
+
+			if continueFlag {
+				continue
+			}
+
+			links := res.Links
+			standardLogger.Println("start len(links) -- ", len(links))
+			standardLogger.Println("first taken link -- ", links[0])
+			standardLogger.Println("last taken link -- ", links[len(links)-1])
+			var numberOfJobs = len(links)
+
+			// ------ end getting links from TaskManager
+
+			totalNumAddedPages += crawlLinksPackage(esClient, insertIdxName, &links,
+				numberOfWorkers, numberOfJobs, len(links))
+
+			standardLogger.Println("Iteration  ", iteration, ", after this iteration totalNumAddedPages -- ", totalNumAddedPages)
+			finishedCode := time.Now()
+
+			standardLogger.Println("Iteration  ", iteration,
+				", total work time after this iteration -- ", finishedCode.Sub(startCode), "\n\n")
+		}
+	}
 
 	//time.Sleep(1)
 	//crawl(links[numJobs-1], jobs, results, &sites)

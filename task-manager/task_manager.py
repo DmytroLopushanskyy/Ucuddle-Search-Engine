@@ -1,4 +1,6 @@
+import math
 import os
+import time
 
 import elasticsearch
 
@@ -13,14 +15,13 @@ from elasticsearch import Elasticsearch
 class TaskManager:
     def __init__(self):
         self.es_client = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
-                                       http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
+                                       http_auth=(os.environ['Username'], os.environ['Password']))
         # self.es_client = Elasticsearch()
 
         index_elastic_links = os.environ["INDEXES_ELASTIC_LINKS"]
         self.index_elastic_links = index_elastic_links.split()[config.POS_ELASTIC_INDEX_LINKS]
         self.index_elastic_sites = os.environ["INDEX_ELASTIC_COLLECTED_DATA"]
 
-        # self.create_site_index_first_entry()
         self.last_id_in_index_sites = -1
 
         try:
@@ -44,19 +45,18 @@ class TaskManager:
         logging.debug("Elastic response for creating new index: ", res)
         return 200
 
-    def retrieve_links(self, num_links):
+    def retrieve_links(self, num_links, taken_value):
         query = {
             "query": {
                 "bool": {
                     "must": [
-                        {"term": {"taken": False}},
+                        {"term": {"taken": taken_value}},
                         {"term": {"parsed": False}}
                     ]
                  }
             },
             "size": num_links,
 
-            # TODO: maybe make sort if necessary
             "sort": {
                 "link_id": {
                     "order": "asc",
@@ -64,31 +64,31 @@ class TaskManager:
             }
         }
 
-        res = self.es_client.search(
-            index=self.index_elastic_links,
-            body=jsonpickle.encode(query, unpicklable=False),
-        )
+        try:
+            res = self.es_client.search(
+                index=self.index_elastic_links,
+                body=jsonpickle.encode(query, unpicklable=False),
+            )
 
-        print("retrieve_links res -- ", res)
+            links = dict()
+            links["links"] = []
+            for hit in res["hits"]["hits"]:
+                links["links"].append([hit["_source"]["link"], hit["_id"]])
+                self.set_parsed_link(hit["_id"], 0, True)
 
-        logging.debug("res", res)
-        links = dict()
-        links["links"] = []
-        for hit in res["hits"]["hits"]:
-            links["links"].append([hit["_source"]["link"], hit["_id"]])
-            self.set_parsed_link(hit["_id"], 0, True)
+            return links
 
-        return links
+        except:
+            print("retrieve_links(): search response is empty to ", self.index_elastic_links)
+            return {"links": []}
 
-    def add_new_links(self, links_lst):
-        # TODO
+    def add_new_links(self, links_index_name, links_lst):
         last_link_id = self.get_last_link_id()
 
-        # last_link_id = 0
-        # last_link_id += 1
+        print("last_link_id before adding links -- ", last_link_id)
         for link in links_lst:
             res = self.es_client.index(
-                index=self.index_elastic_links,
+                index=links_index_name,
                 id=last_link_id,
                 body={
                     "link_id": last_link_id,
@@ -102,28 +102,29 @@ class TaskManager:
 
             last_link_id += 1
 
+        print("last_link_id after adding links -- ", last_link_id)
+
         self.update_last_link_id(last_link_id)
         print("All links were successfully added !!!")
 
     def get_last_link_id(self):
         index_name = os.environ['INDEX_CONFIG_ELASTIC']
-        res = self.es_client.get(index=index_name, id=0)
 
+        res = self.es_client.get(index=index_name, id=0)
         print("get_last_link_id -- ", res)
 
         return res["_source"][os.environ["LAST_LINK_ID_KEY_ELASTIC"]]
 
     def update_last_link_id(self, last_id):
-        doc = {
-            os.environ["LAST_LINK_ID_KEY_ELASTIC"]: last_id,
+        body_dict = {
+            "doc": {
+                os.environ["LAST_LINK_ID_KEY_ELASTIC"]: last_id,
+            }
         }
 
-        # TODO: make update
-        res = self.es_client.index(
-            index=os.environ['INDEX_CONFIG_ELASTIC'],
-            id=0,
-            body=doc
-        )
+        res = self.es_client.update(index=os.environ['INDEX_CONFIG_ELASTIC'],
+                                    id=0,
+                                    body=body_dict)
 
         print(res['result'])
 
@@ -134,17 +135,25 @@ class TaskManager:
         elif body_key == 1:
             body_key = "parsed"
 
-        res = self.es_client.update(
-            index=self.index_elastic_links,
-            id=parsed_link_id,
-            body={
-                "doc": {
-                    body_key: body_value
+        # it wan not unnecessary to make retry here
+        # as crawler make retry by itself
+        try:
+            res = self.es_client.update(
+                index=self.index_elastic_links,
+                id=parsed_link_id,
+                body={
+                    "doc": {
+                        body_key: body_value
+                    }
                 }
-            }
-        )
+            )
 
-        print("set_parsed_link res -- ", res)
+            # logging.error("set_parsed_link() es_client.update invalid response")
+            print("set_parsed_link() res -- ", res)
+
+            return 0
+        except:
+            return -1
         
     def get_last_site_id_in_index(self):
         query = {
@@ -161,11 +170,20 @@ class TaskManager:
             },
         }
 
-        res = self.es_client.search(
-            index=self.index_elastic_sites,
-            body=jsonpickle.encode(query, unpicklable=False),
-        )
+        waiting_response_time = 0
 
-        print("get_last_doc_id() res -- ", res)
+        # retry in elastic
+        for i in range(3):
+            time.sleep(waiting_response_time)
 
-        return res["hits"]["hits"][0]["_source"]["site_id"] + 1
+            res = self.es_client.search(
+                index=self.index_elastic_sites,
+                body=jsonpickle.encode(query, unpicklable=False),
+            )
+
+            try:
+                return res["hits"]["hits"][0]["_source"]["site_id"] + 1
+            except:
+                logging.error("set_parsed_link() es_client.update invalid response", res)
+
+            waiting_response_time = math.exp(i + 1)

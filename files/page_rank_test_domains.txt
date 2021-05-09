@@ -16,7 +16,7 @@ google.qualtrics.com
 usps.com
 billboard.com
 deredactie.be
-youtube.googleblog.com
+youtube.googlebstandardLogger.com
 play.google.com
 developer.android.com
 geni.us
@@ -51,7 +51,7 @@ scionstaffingseattle.com
 sydney.edu.au
 addtoany.com
 eonline.com
-googleblog.blogspot.com
+googlebstandardLogger.blogspot.com
 oscars.org
 tesla.com
 goo.gl
@@ -59,7 +59,7 @@ campaignmonitor.com
 blackberry.com
 lh4.googleusercontent.com
 penguinrandomhouse.com
-youtube-eng.googleblog.com
+youtube-eng.googlebstandardLogger.com
 typescriptlang.org
 gencat.cat
 bonanza.com
@@ -150,7 +150,7 @@ taxlawgazette.com
 amazon.de
 help.apple.com
 youtube.com
-blog.hootsuite.com
+bstandardLogger.hootsuite.com
 fifa.com
 heise.de
 google.com.hk
@@ -204,7 +204,7 @@ static.googleusercontent.com
 get.google.com
 trello.com
 mcafee.com
-blog.google
+bstandardLogger.google
 fatwreck.com
 smallbiztrends.com
 amazon.it
@@ -233,10 +233,10 @@ ampproject.org
 metoffice.gov.uk
 debian.org
 buzzfeednews.com
-blog.medium.com
+bstandardLogger.medium.com
 amazon.co.jp
 airbnb.com
-blog.chromium.org
+bstandardLogger.chromium.org
 meowwolf.com
 urldefense.com
 ons.gov.uk
@@ -251,7 +251,7 @@ allegro.pl
 elsevier.com
 oup.com
 sohu.com
-blog.kissmetrics.com
+bstandardLogger.kissmetrics.com
 suamusica.com.br
 artofmanliness.com
 decks.de
@@ -280,7 +280,7 @@ sethgodin.typepad.com
 ssl.gstatic.com
 target.com
 forms.gle
-hk.myblog.yahoo.com
+hk.mybstandardLogger.yahoo.com
 get.adobe.com
 criteo.com
 shutterstock.com
@@ -368,7 +368,7 @@ issuu.com
 siteground.com
 feedburner.com
 edition.cnn.com
-blog.onthebox.com
+bstandardLogger.onthebox.com
 lifewithalacrity.com
 en.wiktionary.org
 nyc.gov
@@ -419,7 +419,7 @@ tfl.gov.uk
 b.scorecardresearch.com
 feeds.feedburner.com
 minds.com
-blog.cloudflare.com
+bstandardLogger.cloudflare.com
 caribischnetwerk.ntr.nl
 docs.oracle.com
 wix.com
@@ -534,7 +534,7 @@ weather.gov
 docs.microsoft.com
 socialmediaexaminer.com
 jurllyshe.com
-blog.livedoor.jp
+bstandardLogger.livedoor.jp
 usatoday.com
 ed.ted.com
 eea.europa.eu
@@ -553,7 +553,7 @@ lemonde.fr
 reddit.com
 fr.youtube.com
 301.nz
-analog.com
+anastandardLogger.com
 google.com.sl
 github.com
 icann.org
@@ -567,7 +567,7 @@ mediafire.com
 services.google.com
 naver.com
 arduino.cc
-blog.twitter.com
+bstandardLogger.twitter.com
 tmz.com
 apple.co
 smugmug.com
@@ -611,7 +611,7 @@ ssl.google-analytics.com
 wp.com
 ad.doubleclick.net
 validator.w3.org
-blog.archive.org
+bstandardLogger.archive.org
 cell.com
 ascap.com
 sg.linkedin.com
@@ -636,7 +636,7 @@ foursquare.com
 cdn.rawgit.com
 freshbooks.com
 modernbluesharmonica.com
-blog.naver.com
+bstandardLogger.naver.com
 adwords.google.com
 in.gov
 slideshare.net
@@ -754,7 +754,7 @@ wikitravel.org
 siemens.com
 morganwallen.com
 orkut.com.br
-youtube-creators.googleblog.com
+youtube-creators.googlebstandardLogger.com
 beancash.org
 s3.us-east-2.amazonaws.com
 picasaweb.google.com
@@ -956,14 +956,14 @@ farm4.static.flickr.com
 ilportaledelsud.org
 seetickets.com
 formstack.com
-www.over-blog.com
+www.over-bstandardLogger.com
 esquire.com
 uargument.com.ua
 artehistoria.jcyl.es
 digitaltrends.com
 cyriljackson.wa.edu.au
 petitions.whitehouse.gov
-blog.ted.com
+bstandardLogger.ted.com
 arcgis.com
 marieclaire.com
 ashadedviewonfashion.com
@@ -1028,7 +1028,7 @@ media.ccc.de
 yoast.com
 dev.to
 usmagazine.com
-googleblog.com
+googlebstandardLogger.com
 ovh.com
 dezeen.com
 google.ie
@@ -1172,7 +1172,7 @@ adafruit.com
 timeout.com
 maxcdn.bootstrapcdn.com
 refergsuite.app.goo.gl
-blog.bufferapp.com
+bstandardLogger.bufferapp.com
 msn.com
 etsy.com
 web.stanford.edu
@@ -1204,7 +1204,7 @@ sendspace.com
 people.com
 developer.paypal.com
 culturebox.francetvinfo.fr
-blog.mozilla.org
+bstandardLogger.mozilla.org
 gallup.com
 g.co
 roadtrippers.com
@@ -1527,7 +1527,7 @@ videohive.net
 mailchimp.com
 bewusstsein-events.info
 scionstaffingportland.com
-webmasters.googleblog.com
+webmasters.googlebstandardLogger.com
 picasa.google.com
 getpocket.com
 saddleback.com
@@ -1560,7 +1560,7 @@ bl.uk
 facebook.com
 indiatoday.in
 businessweek.com
-blog.youtube
+bstandardLogger.youtube
 ib.adnxs.com
 boston.com
 beppegrillo.it
@@ -1828,7 +1828,7 @@ bugs.chromium.org
 transparencyreport.google.com
 prestashop.com
 pl.wikipedia.org
-security.googleblog.com
+security.googlebstandardLogger.com
 sophos.com
 soundhouse.co.jp
 nybooks.com
@@ -1913,13 +1913,13 @@ kickstarter.com
 rt.com
 webaim.org
 code.visualstudio.com
-developers.googleblog.com
+developers.googlebstandardLogger.com
 gtmetrix.com
 meetup.com
 vr.youtube.com
 skype.com
 hackaday.com
-agency.googleblog.com
+agency.googlebstandardLogger.com
 dk.linkedin.com
 nasa.gov
 welt.de
@@ -1969,7 +1969,7 @@ investopedia.com
 cdbaby.com
 yandex.com
 detik.com
-blog.sina.com.cn
+bstandardLogger.sina.com.cn
 android.com
 g2a.com
 bostonglobe.com
@@ -2022,8 +2022,8 @@ sfbatraining.com
 search.yahoo.com
 gettyimages.com
 wunderground.com
-blog.hubspot.com
-tabelog.com
+bstandardLogger.hubspot.com
+tabestandardLogger.com
 digitalfx.uk
 npmjs.com
 getbootstrap.com
