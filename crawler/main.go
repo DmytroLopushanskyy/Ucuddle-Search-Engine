@@ -65,7 +65,7 @@ func readLines(path string) ([]string, error) {
 }
 
 func visitLink(lst chan<- Site, mainLink string,
-	visited *SafeSetOfLinks, id int, numInternalPage *uint64) (failed error) {
+	visited *SafeSetOfLinks, id int, numInternalPage *uint64, domain string) (failed error) {
 
 	var MaxInternalPages uint64
 	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
@@ -76,13 +76,15 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	var site Site
 	hyperlinksSet := NewSet()
-	//collector := colly.NewCollector(
-	//	colly.AllowedDomains("https://organexpressions.com","organexpressions.com", "https://www.organexpressions.com", "www.organexpressions.com",
-	//						 "https://oneessencehealing.com","oneessencehealing.com", "https://www.oneessencehealing.com", "www.oneessencehealing.com"),
-	//)
 
-	collector := colly.NewCollector()
 
+	if !strings.Contains(link, domain){
+		return 
+	}
+
+	collector := colly.NewCollector(
+							
+	)
 	collector.OnRequest(func(request *colly.Request) {
 		// if (request.URL.String() =="https://oneessencehealing.com/"){
 		standardLogger.Println("Visiting", request.URL.String())
@@ -160,24 +162,6 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	})
 
-	// c.OnHTML("html", func(e *colly.HTMLElement) {
-	// 	if strings.EqualFold(e.ChildAttr(`meta[property="og:type"]`, "content"), "article") {
-	// 		// Find the emoji page title
-	// 		fmt.Println("Emoji: ", e.ChildText("article h1"))
-	// 		// Grab all the text from the emoji's description
-	// 		fmt.Println("Description: ", e.ChildText("article .description p"))
-	// 	}
-	// })
-	// 	site.Title
-
-	// if strings.EqualFold(e.ChildAttr(`meta[property="og:title"]`, "content"), "article") {
-	// 	// Find the emoji page title
-	// 	fmt.Println("Emoji: ", e.ChildText("article h1"))
-	// 	// Grab all the text from the emoji's description
-	// 	fmt.Println("Description: ", e.ChildText("article .description p"))
-	// }
-	// })
-
 	found := visited.checkIfContains(mainLink)
 
 	if !found {
@@ -198,11 +182,7 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
 		strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n "))
-	// _, found := Find(*visited, link)
-	// if !found {
-	// 	*visited = append(*visited, link)
-	// 	collector.Visit(link)
-	// }
+
 
 	if site.Link == "" {
 		return
@@ -222,10 +202,8 @@ L:
 		}
 	}
 
-	//return
-
 	for _, s := range site.Hyperlinks {
-		visitLink(lst, s, visited, id, numInternalPage)
+		visitLink(lst, s, visited, id, numInternalPage, domain)
 	}
 
 	return
@@ -241,7 +219,7 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 			var failed error
 			var numInternalPage uint64
 			numInternalPage = 0
-			failed = visitLink(lst, link[0], visited, id, &numInternalPage)
+			failed = visitLink(lst, link[0], visited, id, &numInternalPage, link[0])
 
 			if failed == nil {
 
