@@ -98,9 +98,16 @@ def set_last_site_id():
 def get_last_site_id():
     last_id = task_manager.last_id_in_index_sites
 
-    task_manager.last_id_in_index_sites += PACKAGE_SIZE
+    if last_id == -1:
+        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_index()
+        last_id = task_manager.last_id_in_index_sites
 
-    print("last_id -- ", last_id)
+    task_manager.last_id_in_index_sites += PACKAGE_SIZE
+    print("last_site_id -- ", last_id)
+
+    if last_id == -1:
+        return jsonify({"last_site_id": False}), 500
+
     return jsonify({"last_site_id": last_id}), 200
 
 

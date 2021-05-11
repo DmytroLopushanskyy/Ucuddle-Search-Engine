@@ -47,14 +47,15 @@ if __name__ == '__main__':
     #
     #     print(response, response.reason)
 
-    slice_id = 101
+    slice_id = 0
     step = 30
 
     indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
     url = os.environ["TASK_MANAGER_URL"] + os.environ["TASK_MANAGER_ENDPOINT_ADD_LINKS"]
     response = requests.post(url, json={
-        "links_index_name": indexes_names[1],
-        "links": dict_links["links"][slice_id: slice_id + step]
+        "links_index_name": indexes_names[0],
+        "links": dict_links["links"]
+        # "links": dict_links["links"][slice_id: slice_id + step]
     })
 
     slice_id += step

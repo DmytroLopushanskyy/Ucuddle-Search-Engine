@@ -36,13 +36,14 @@ class TaskManager:
 
     def create_new_index(self, index_name):
         logging.debug("Creating new index")
-        res = self.es_client.indices.create(index=index_name, ignore=400)
+        if index_name != "la_links_to_parse1":
+            res = self.es_client.indices.create(index=index_name, ignore=400)
 
-        if res.get('status', 0) != 0:
-            print("Error reason: ", res['error']['reason'])
-            return res['status']
+            if res.get('status', 0) != 0:
+                print("Error reason: ", res['error']['reason'])
+                return res['status']
 
-        logging.debug("Elastic response for creating new index: ", res)
+            logging.debug("Elastic response for creating new index: ", res)
         return 200
 
     def retrieve_links(self, num_links, taken_value):
@@ -68,6 +69,7 @@ class TaskManager:
             res = self.es_client.search(
                 index=self.index_elastic_links,
                 body=jsonpickle.encode(query, unpicklable=False),
+                request_timeout=100,
             )
 
             links = dict()
