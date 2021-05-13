@@ -70,7 +70,6 @@ func visitLink(lst chan<- Site, mainLink string,
 	var MaxInternalPages uint64
 	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
 	if *numInternalPage >= MaxInternalPages {
-		//standardLogger.Println("Achieved max numInternalPage \n\n")
 		return
 	}
 
@@ -86,9 +85,7 @@ func visitLink(lst chan<- Site, mainLink string,
 							
 	)
 	collector.OnRequest(func(request *colly.Request) {
-		// if (request.URL.String() =="https://oneessencehealing.com/"){
 		standardLogger.Println("Visiting", request.URL.String())
-		// }
 	})
 
 	collector.OnResponse(func(response *colly.Response) {
@@ -124,23 +121,44 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	collector.OnHTML("head", func(element *colly.HTMLElement) {
 		link := strings.TrimSpace(element.Attr("title"))
-		site.Title = site.Title + " " + link
+		// site.Title = site.Title + " " + link
 		site.Link = strings.TrimSpace((element.Request).URL.String())
 		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
-		site.Title = site.Title + " " + element.ChildText("title") + " " + element.DOM.Find("title").Text()
+		
+		if site.Title == " "{
+			site.Title = element.ChildText("title") 
+		}
+
+		if site.Title == " "{
+			site.Title = element.DOM.Find("title").Text()
+		}
+
 	})
 
 	collector.OnHTML("title", func(element *colly.HTMLElement) {
-		site.Title = site.Title + " " + element.Text
+		if site.Title == " "{
+			site.Title = element.Text
+		}
 	})
 
 	collector.OnHTML("h1", func(element *colly.HTMLElement) {
-		site.Title = site.Title + " " + element.Text
+		if site.Title == " "{
+			site.Title = element.Text
+		}
 	})
 
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
-		site.Title = site.Title + " " + e.ChildAttr(`meta[property="og:title"]`, "content") + " " +
-			e.ChildText("title") + e.DOM.Find("title").Text()
+		if site.Title == " "{
+			e.ChildAttr(`meta[property="og:title"]`, "content")
+		}
+
+		if site.Title == " "{
+			e.ChildText("title")
+		}
+
+		if site.Title == " "{
+			e.DOM.Find("title").Text()
+		}
 	})
 
 	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -165,7 +183,6 @@ func visitLink(lst chan<- Site, mainLink string,
 	found := visited.checkIfContains(mainLink)
 
 	if !found {
-		// *visited = append(*visited, link)
 		visited.addLink(mainLink)
 		collector.Visit(mainLink)
 		atomic.AddUint64(numInternalPage, 1)
@@ -174,7 +191,6 @@ func visitLink(lst chan<- Site, mainLink string,
 		return
 	}
 
-	//site.Hyperlinks = hyperlinksSet.dict
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
