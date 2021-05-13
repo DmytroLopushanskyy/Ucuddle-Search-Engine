@@ -350,6 +350,8 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 }
 
 func main() {
+	os.Setenv("COLLY_IGNORE_ROBOTSTXT", "n")
+
 	// Perform health-check
 	//for {
 	//	_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
