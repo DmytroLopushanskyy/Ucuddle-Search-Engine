@@ -181,6 +181,7 @@ class TaskManager:
             res = self.es_client.search(
                 index=self.index_elastic_sites,
                 body=jsonpickle.encode(query, unpicklable=False),
+                request_timeout=100
             )
 
             try:
