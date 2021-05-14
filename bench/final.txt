@@ -1,0 +1,10 @@
+goos: linux
+goarch: amd64
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_10-8    	       1	50050107305 ns/op
+BenchmarkCrawler_20-8    	       1	24579936623 ns/op
+BenchmarkCrawler_30-8    	     139	   9981634 ns/op
+BenchmarkCrawler_40-8    	     100	  11071605 ns/op
+BenchmarkCrawler_50-8   	      98	  11403118 ns/op
+PASS
+ok  	_/home/janusdg/UCU/2_year/ACS/project/ucuddle-crawlers/bench	79.655s
