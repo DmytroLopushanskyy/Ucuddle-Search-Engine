@@ -77,14 +77,11 @@ func visitLink(lst chan<- Site, mainLink string,
 	var site Site
 	hyperlinksSet := NewSet()
 
-
 	if !strings.Contains(mainLink, domain) {
-		return 
+		return
 	}
 
-	collector := colly.NewCollector(
-							
-	)
+	collector := colly.NewCollector()
 	collector.OnRequest(func(request *colly.Request) {
 		standardLogger.Println("Visiting", request.URL.String())
 	})
@@ -123,15 +120,14 @@ func visitLink(lst chan<- Site, mainLink string,
 	collector.OnHTML("head", func(element *colly.HTMLElement) {
 		site.Link = strings.TrimSpace((element.Request).URL.String())
 		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
-		
+
 		if site.Title == " " {
-			site.Title = element.ChildText("title") 
+			site.Title = element.ChildText("title")
 		}
 
 		if site.Title == " " {
 			site.Title = element.DOM.Find("title").Text()
 		}
-
 	})
 
 	collector.OnHTML("title", func(element *colly.HTMLElement) {
@@ -141,21 +137,21 @@ func visitLink(lst chan<- Site, mainLink string,
 	})
 
 	collector.OnHTML("h1", func(element *colly.HTMLElement) {
-		if site.Title == " "{
+		if site.Title == " " {
 			site.Title = element.Text
 		}
 	})
 
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
-		if site.Title == " "{
+		if site.Title == " " {
 			e.ChildAttr(`meta[property="og:title"]`, "content")
 		}
 
-		if site.Title == " "{
+		if site.Title == " " {
 			e.ChildText("title")
 		}
 
-		if site.Title == " "{
+		if site.Title == " " {
 			e.DOM.Find("title").Text()
 		}
 	})
@@ -170,8 +166,8 @@ func visitLink(lst chan<- Site, mainLink string,
 				link = link[:startLinkParameters]
 			}
 
-			if link[len(link)- 1: len(link)] == "/" {
-				link = link[:len(link) - 1]
+			if link[len(link)-1:len(link)] == "/" {
+				link = link[:len(link)-1]
 			}
 
 			hyperlinksSet.Add(link)
@@ -198,13 +194,12 @@ func visitLink(lst chan<- Site, mainLink string,
 	site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
 		strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n "))
 
-
 	if site.Link == "" {
 		return
 	}
 
-	if site.Link[len(site.Link)- 1: len(site.Link)] == "/" {
-		site.Link = site.Link[:len(site.Link) - 1]
+	if site.Link[len(site.Link)-1:len(site.Link)] == "/" {
+		site.Link = site.Link[:len(site.Link)-1]
 	}
 
 L:
@@ -306,7 +301,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 		}
 
 		defer wg.Done()
-	} (finishElasticInsert, &sliceSites, sites, allParsedLinks, &numAddedPages)
+	}(finishElasticInsert, &sliceSites, sites, allParsedLinks, &numAddedPages)
 
 	linksQueue := make(chan [2]string)
 	done := make(chan bool)
@@ -324,7 +319,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 
 			// avoid http links and complete to a full link of domain
 			if !strings.Contains((*links)[j][0], "http") {
-				linksQueue <- [2]string {"https://" + (*links)[j][0], (*links)[j][1]}
+				linksQueue <- [2]string{"https://" + (*links)[j][0], (*links)[j][1]}
 			} else {
 				linksQueue <- (*links)[j]
 			}
@@ -384,13 +379,12 @@ func main() {
 	// end elastic connection
 
 	// ================== set last site id in Task Manager ==================
-	postBody, _ := json.Marshal(map[string]string {
-		"1":  "1",
+	postBody, _ := json.Marshal(map[string]string{
+		"1": "1",
 	})
 	responseBody := bytes.NewBuffer(postBody)
-	http.Post(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
+	http.Post(os.Getenv("TASK_MANAGER_URL")+os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
 		"application/json", responseBody)
-
 
 	var totalNumAddedPages uint64
 	var continueFlag bool
@@ -421,7 +415,7 @@ func main() {
 
 			continueFlag = false
 
-			Block {
+			Block{
 				Try: func() {
 					if res.Links[0][0] == "links ended" {
 						endedIdxLinksCounter++
