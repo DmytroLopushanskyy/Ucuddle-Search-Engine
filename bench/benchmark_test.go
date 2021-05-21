@@ -70,6 +70,14 @@ func (c *SafeList) checkIfContains(link string) (int,bool) {
     return -1, false
 }
 
+func (c *SafeList) returnLen() int {
+	c.mu.Lock()
+	// Lock so only one goroutine at a time can access the map c.v.
+	ret := len(c.Links)
+	c.mu.Unlock()
+	return ret
+}
+
 func writeSliceJSON(data []Site, writefile string){
 	file, err := json.MarshalIndent(data, "", " ")
 	if err != nil{
@@ -125,6 +133,10 @@ func Find(slice []string, val string) (int, bool) {
 
 func visit_link(lst chan<- Site, link string, visited *SafeList, id int, domain string) (failed error){
 	var site Site
+
+	if visited.returnLen() > 10{
+		return 
+	}
 
 	if !strings.Contains(link, domain){
 		return 
@@ -389,7 +401,7 @@ func main_crawl(go_rout_num int) {
 
 
 
-	
+
 	
 	// for {
 	// 	val, ok := <-failedLinks
@@ -414,11 +426,11 @@ func benchmarkCrawler(i int, b *testing.B) {
     }
 }
 
-func BenchmarkCrawler_10(b *testing.B)  { benchmarkCrawler(2, b) }
-func BenchmarkCrawler_20(b *testing.B)  { benchmarkCrawler(3, b) }
-func BenchmarkCrawler_30(b *testing.B)  { benchmarkCrawler(5, b) }
-func BenchmarkCrawler_40(b *testing.B)  { benchmarkCrawler(8, b) }
-func BenchmarkCrawler_50(b *testing.B)  { benchmarkCrawler(10, b) }
+func BenchmarkCrawler_20(b *testing.B)  { benchmarkCrawler(20, b) }
+func BenchmarkCrawler_40(b *testing.B)  { benchmarkCrawler(40, b) }
+func BenchmarkCrawler_60(b *testing.B)  { benchmarkCrawler(60, b) }
+func BenchmarkCrawler_80(b *testing.B)  { benchmarkCrawler(80, b) }
+func BenchmarkCrawler_100(b *testing.B)  { benchmarkCrawler(100, b) }
 
 func main(){
     main_crawl(2)

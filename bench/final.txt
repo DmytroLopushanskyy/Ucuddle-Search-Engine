@@ -1,10 +1,260 @@
+----- 50 links, up to 10 sublinks
+1.
+
 goos: linux
 goarch: amd64
+pkg: root/bench
 cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
-BenchmarkCrawler_10-8    	       1	50050107305 ns/op
-BenchmarkCrawler_20-8    	       1	24579936623 ns/op
-BenchmarkCrawler_30-8    	     139	   9981634 ns/op
-BenchmarkCrawler_40-8    	     100	  11071605 ns/op
-BenchmarkCrawler_50-8   	      98	  11403118 ns/op
+BenchmarkCrawler_10-8   	       1	20783778511 ns/op
+BenchmarkCrawler_20-8   	       1	12647673322 ns/op
+BenchmarkCrawler_30-8   	       1	14924841890 ns/op
+BenchmarkCrawler_40-8   	       1	11497462108 ns/op
+BenchmarkCrawler_50-8   	       1	12892366484 ns/op
 PASS
-ok  	_/home/janusdg/UCU/2_year/ACS/project/ucuddle-crawlers/bench	79.655s
+ok  	root/bench	72.779s
+
+2.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_10-8   	       1	34791635769 ns/op
+BenchmarkCrawler_20-8   	       1	18634206434 ns/op
+BenchmarkCrawler_30-8   	       1	13140956642 ns/op
+BenchmarkCrawler_40-8   	       1	10392851969 ns/op
+BenchmarkCrawler_50-8   	       1	10046637555 ns/op
+PASS
+ok  	root/bench	87.049s
+
+3.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_10-8   	       1	26870975219 ns/op
+BenchmarkCrawler_20-8   	       1	19714708386 ns/op
+BenchmarkCrawler_30-8   	       1	17990528092 ns/op
+BenchmarkCrawler_40-8   	       1	21712739129 ns/op
+BenchmarkCrawler_50-8   	       1	18138921713 ns/op
+PASS
+ok  	root/bench	104.468s
+
+4.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_10-8   	       1	18815226515 ns/op
+BenchmarkCrawler_20-8   	       1	10530036483 ns/op
+BenchmarkCrawler_30-8   	       1	10186495699 ns/op
+BenchmarkCrawler_40-8   	       1	10046471765 ns/op
+BenchmarkCrawler_50-8   	       1	10044256857 ns/op
+PASS
+ok  	root/bench	59.646s
+
+5.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_10-8   	       1	35144156611 ns/op
+BenchmarkCrawler_20-8   	       1	34625805423 ns/op
+BenchmarkCrawler_30-8   	       1	29441474526 ns/op
+BenchmarkCrawler_40-8   	       1	31587895870 ns/op
+BenchmarkCrawler_50-8   	       1	31101705522 ns/op
+PASS
+ok  	root/bench	161.918s
+
+
+
+
+----- 100 links, up to 10 sublinks
+
+1.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_20-8    	       1	26037099224 ns/op
+BenchmarkCrawler_40-8    	       1	25622268053 ns/op
+BenchmarkCrawler_60-8    	       1	26177183616 ns/op
+BenchmarkCrawler_80-8    	       1	25618695290 ns/op
+BenchmarkCrawler_100-8   	       1	25673255615 ns/op
+PASS
+ok  	root/bench	129.144s
+
+2.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_20-8    	       1	31700167189 ns/op
+BenchmarkCrawler_40-8    	       1	19507373132 ns/op
+BenchmarkCrawler_60-8    	       1	19121366886 ns/op
+BenchmarkCrawler_80-8    	       1	18687385526 ns/op
+BenchmarkCrawler_100-8   	       1	19070716059 ns/op
+PASS
+ok  	root/bench	108.106s
+
+3.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_20-8    	       1	25864922421 ns/op
+BenchmarkCrawler_40-8    	       1	16679046094 ns/op
+BenchmarkCrawler_60-8    	       1	17071628127 ns/op
+BenchmarkCrawler_80-8    	       1	18601362114 ns/op
+BenchmarkCrawler_100-8   	       1	19349730972 ns/op
+PASS
+ok  	root/bench	97.603s
+
+4.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_20-8    	       1	22614837318 ns/op
+BenchmarkCrawler_40-8    	       1	12313394259 ns/op
+BenchmarkCrawler_60-8    	       1	16109644393 ns/op
+BenchmarkCrawler_80-8    	       1	10056871301 ns/op
+BenchmarkCrawler_100-8   	       1	10054941665 ns/op
+PASS
+ok  	root/bench	71.170s
+
+5.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_20-8    	       1	18036171047 ns/op
+BenchmarkCrawler_40-8    	       1	13808915049 ns/op
+BenchmarkCrawler_60-8    	       1	13451127317 ns/op
+BenchmarkCrawler_80-8    	       1	14278947184 ns/op
+BenchmarkCrawler_100-8   	       1	13356775804 ns/op
+PASS
+ok  	root/bench	72.950s
+
+----- 200 links, up to 10 sublinks
+
+1.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	35304915075 ns/op
+BenchmarkCrawler_80-8    	       1	34018331531 ns/op
+BenchmarkCrawler_120-8   	       1	26945543730 ns/op
+BenchmarkCrawler_160-8   	       1	28266105563 ns/op
+BenchmarkCrawler_200-8   	       1	29203765354 ns/op
+PASS
+ok  	root/bench	153.780s
+
+2.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	35066102389 ns/op
+BenchmarkCrawler_80-8    	       1	34672126413 ns/op
+BenchmarkCrawler_120-8   	       1	34934415356 ns/op
+BenchmarkCrawler_160-8   	       1	35188855958 ns/op
+BenchmarkCrawler_200-8   	       1	34759027849 ns/op
+PASS
+ok  	root/bench	174.649s
+
+3.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	61344567215 ns/op
+BenchmarkCrawler_80-8    	       1	49622575805 ns/op
+BenchmarkCrawler_120-8   	       1	32525073356 ns/op
+BenchmarkCrawler_160-8   	       1	41650912767 ns/op
+BenchmarkCrawler_200-8   	       1	30800601898 ns/op
+PASS
+ok  	root/bench	215.972s
+
+4.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	49422662874 ns/op
+BenchmarkCrawler_80-8    	       1	98772580610 ns/op
+BenchmarkCrawler_120-8   	       1	19567895097 ns/op
+BenchmarkCrawler_160-8   	       1	65131793178 ns/op
+BenchmarkCrawler_200-8   	       1	67064042578 ns/op
+PASS
+ok  	root/bench	299.982s
+
+5.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	41388896306 ns/op
+BenchmarkCrawler_80-8    	       1	39746256233 ns/op
+BenchmarkCrawler_120-8   	       1	46710411712 ns/op
+BenchmarkCrawler_160-8   	       1	65733232179 ns/op
+BenchmarkCrawler_200-8   	       1	40455326393 ns/op
+PASS
+ok  	root/bench	234.061s
+
+6.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	55488784782 ns/op
+BenchmarkCrawler_80-8    	       1	58760735502 ns/op
+BenchmarkCrawler_120-8   	       1	51167768236 ns/op
+BenchmarkCrawler_160-8   	       1	45912596852 ns/op
+BenchmarkCrawler_200-8   	       1	46933314282 ns/op
+PASS
+ok  	root/bench	258.324s
+
+7.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	41534634949 ns/op
+BenchmarkCrawler_80-8    	       1	26570547460 ns/op
+BenchmarkCrawler_120-8   	       1	22517374988 ns/op
+BenchmarkCrawler_160-8   	       1	25511294817 ns/op
+BenchmarkCrawler_200-8   	       1	23401239388 ns/op
+PASS
+ok  	root/bench	139.593s
+
+8.
+
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_40-8    	       1	70151445210 ns/op
+BenchmarkCrawler_80-8    	       1	66292761718 ns/op
+BenchmarkCrawler_120-8   	       1	66328933185 ns/op
+BenchmarkCrawler_160-8   	       1	66237535060 ns/op
+BenchmarkCrawler_200-8   	       1	66297054087 ns/op
+PASS
+ok  	root/bench	335.348s
+
