@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -87,4 +88,20 @@ func setParsedLink(linkId string) {
 		standardLogger.Fatal(err)
 	}
 	defer resp.Body.Close()
+}
+
+func findNthSymbol(content string, symbol string, nOccurrences int) int {
+	startPos := 0
+	endPos := len(content)
+	pos := -1
+	for i := 0; i < nOccurrences; i++ {
+		pos = strings.Index(content[startPos: endPos], symbol)
+		if pos == -1 {
+			return -1
+		}
+
+		startPos += pos + 1
+	}
+
+	return startPos - 1
 }

@@ -184,6 +184,10 @@ func visitLink(lst chan<- Site, mainLink string,
 		atomic.AddUint64(numInternalPage, 1)
 	} else {
 		standardLogger.Println("checkIfContains ", mainLink, "visited -- ", found)
+		//for key, _ := range visited.linkSet {
+		//	fmt.Println(key)
+		//}
+
 		return
 	}
 
@@ -191,6 +195,11 @@ func visitLink(lst chan<- Site, mainLink string,
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
 	}
+
+	//fmt.Println("site.Hyperlinks mainLink -- ", mainLink)
+	//for idx, link := range site.Hyperlinks {
+	//	fmt.Println(idx, link)
+	//}
 
 	site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
 		strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n "))
@@ -223,6 +232,8 @@ L:
 func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 	wg *sync.WaitGroup, visited *SafeSetOfLinks, failedLinks chan map[string]string, id int) {
 
+	var domain string
+	var endDomainPos int
 	for true {
 		select {
 		case link := <-linksQueue:
@@ -230,7 +241,14 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 			var failed error
 			var numInternalPage uint64
 			numInternalPage = 0
-			failed = visitLink(lst, link[0], visited, id, &numInternalPage, link[0])
+
+			domain = link[0]
+
+			endDomainPos = findNthSymbol(link[0], "/", 3)
+			if endDomainPos != -1 {
+				domain = domain[: endDomainPos]
+			}
+			failed = visitLink(lst, link[0], visited, id, &numInternalPage, domain)
 
 			if failed == nil {
 

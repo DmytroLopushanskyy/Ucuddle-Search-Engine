@@ -5,11 +5,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c21fbd1b-c3aa-4ac2-a86e-d5239426f154" name="Default Changelist" comment="comment some debug prints">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/helper_funcs.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/helper_funcs.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crawler/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/safe_lists.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/safe_lists.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/files/ukr_domains.json" beforeDir="false" afterPath="$PROJECT_DIR$/files/ukr_domains.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/elastic_interaction.py" beforeDir="false" afterPath="$PROJECT_DIR$/web/elastic_interaction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/templates/search.html" beforeDir="false" afterPath="$PROJECT_DIR$/web/templates/search.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/task-manager/script_to_add_links.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/script_to_add_links.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +76,15 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Build.go build crawler/">
+  <component name="RunManager" selected="Go Build.go build buf.go">
+    <configuration name="go build buf.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="ucuddle-crawlers" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <filePath value="$PROJECT_DIR$/elastic-interaction/buf.go" />
+      <directory value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
     <configuration name="go build crawler/" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="ucuddle-crawlers" />
       <working_directory value="$PROJECT_DIR$" />
@@ -93,11 +103,11 @@
       <directory value="$PROJECT_DIR$/crawler" />
       <method v="2" />
     </configuration>
-    <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+    <configuration name="go build safe_lists.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="ucuddle-crawlers" />
       <working_directory value="$PROJECT_DIR$" />
       <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/crawler/main.go" />
+      <filePath value="$PROJECT_DIR$/crawler/safe_lists.go" />
       <directory value="$PROJECT_DIR$" />
       <method v="2" />
     </configuration>
@@ -232,17 +242,18 @@
     </configuration>
     <list>
       <item itemvalue="Go Build.go build crawler/" />
-      <item itemvalue="Go Build.go build main.go" />
       <item itemvalue="Python.script_to_add_links" />
       <item itemvalue="Python.web" />
+      <item itemvalue="Go Build.go build safe_lists.go" />
+      <item itemvalue="Go Build.go build buf.go" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.web" />
+        <item itemvalue="Go Build.go build buf.go" />
         <item itemvalue="Go Build.go build crawler/" />
         <item itemvalue="Python.script_to_add_links" />
-        <item itemvalue="Python.app" />
-        <item itemvalue="Go Build.go build main.go" />
+        <item itemvalue="Go Build.go build safe_lists.go" />
+        <item itemvalue="Python.web" />
       </list>
     </recent_temporary>
   </component>

@@ -46,7 +46,8 @@ if __name__ == '__main__':
         dict_links = json.load(f)
 
     options = ["Create new indexes and fill them with links OR append to the first index_name in INDEXES_ELASTIC_LINKS",
-               "Add links to existing index"]
+               "Add links to existing index",
+               "Reset LAST_LINK_ID_KEY_ELASTIC to 1"]
     print("Choose an option of adding link:")
 
     for i, option in enumerate(options):
@@ -56,7 +57,7 @@ if __name__ == '__main__':
 
     if n_option == 1:
         slice_id = 0
-        step = 20
+        step = 2
 
         indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
         for i in range(1):
@@ -84,3 +85,6 @@ if __name__ == '__main__':
         slice_id += step
 
         print(response, response.reason)
+
+    elif n_option == 3:
+        update_config_index()

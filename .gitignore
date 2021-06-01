@@ -1,5 +1,6 @@
 /.idea
 elastic-interaction/buf.go
+crawler/buf.go
 
 # important files
 *.env
@@ -10,6 +11,5 @@ elastic-interaction/buf.go
 task-manager/test_functs.py
 ansible/hosts.ini
 
-crawler/buf.go
 crawler/ucuddle-crawlers
 web/__pycache__
