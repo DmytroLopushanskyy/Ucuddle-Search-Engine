@@ -5,7 +5,25 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c21fbd1b-c3aa-4ac2-a86e-d5239426f154" name="Default Changelist" comment="comment some debug prints">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/crawler_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/crawler_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/functs_with_elastic.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/functs_with_elastic.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/structures.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/structures.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/utils.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/elastic-interaction/elastic_settings.go" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/elastic_settings.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/elastic-interaction/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/go.mod" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/elastic-interaction/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/elastic-interaction/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/task-manager/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/task-manager/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/task-manager/links_for_crawling.json" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/links_for_crawling.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/task-manager/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/task_manager.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/web/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/elastic_interaction.py" beforeDir="false" afterPath="$PROJECT_DIR$/web/elastic_interaction.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,7 +72,7 @@
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
     <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/shared_vars.env" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -69,43 +87,31 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.app">
-    <configuration name="go build buf.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Go Build.go build crawler/">
+    <configuration name="go build crawler/" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="ucuddle-crawlers" />
+      <working_directory value="$PROJECT_DIR$" />
+      <EXTENSION ID="net.ashald.envfile">
+        <option name="IS_ENABLED" value="false" />
+        <option name="IS_SUBST" value="false" />
+        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+        <option name="IS_IGNORE_MISSING_FILES" value="false" />
+        <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+        <ENTRIES>
+          <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+        </ENTRIES>
+      </EXTENSION>
+      <kind value="DIRECTORY" />
+      <filePath value="$PROJECT_DIR$/crawler/main.go" />
+      <directory value="$PROJECT_DIR$/crawler" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="ucuddle-crawlers" />
       <working_directory value="$PROJECT_DIR$" />
       <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/crawler/buf.go" />
+      <filePath value="$PROJECT_DIR$/crawler/main.go" />
       <directory value="$PROJECT_DIR$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="go build main.go (1)" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
-      <module name="ucuddle-crawlers" />
-      <working_directory value="$PROJECT_DIR$" />
-      <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/elastic-interaction/main.go" />
-      <directory value="$PROJECT_DIR$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="app (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="ucuddle-crawlers" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/web" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/web/app.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
     <configuration name="app" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
@@ -129,7 +135,7 @@
         <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
         <ENTRIES>
           <ENTRY IS_ENABLED="true" PARSER="runconfig" />
-          <ENTRY IS_ENABLED="true" PARSER="env" PATH="flask-env.env" />
+          <ENTRY IS_ENABLED="true" PARSER="env" PATH="shared_vars.env" />
         </ENTRIES>
       </EXTENSION>
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/task-manager/app.py" />
@@ -173,7 +179,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="app(1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
+    <configuration name="script_to_add_links" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="ucuddle-crawlers" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -185,7 +191,6 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <EXTENSION ID="net.ashald.envfile">
         <option name="IS_ENABLED" value="true" />
         <option name="IS_SUBST" value="false" />
@@ -194,10 +199,42 @@
         <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
         <ENTRIES>
           <ENTRY IS_ENABLED="true" PARSER="runconfig" />
-          <ENTRY IS_ENABLED="true" PARSER="env" PATH="flask-env.env" />
+          <ENTRY IS_ENABLED="true" PARSER="env" PATH="shared_vars.env" />
         </ENTRIES>
       </EXTENSION>
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/task-manager/app.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/task-manager/script_to_add_links.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="web" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="ucuddle-crawlers" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="$PROJECT_DIR$/../venv/bin/python3.8" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/web" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="net.ashald.envfile">
+        <option name="IS_ENABLED" value="true" />
+        <option name="IS_SUBST" value="false" />
+        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+        <option name="IS_IGNORE_MISSING_FILES" value="false" />
+        <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+        <ENTRIES>
+          <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+          <ENTRY IS_ENABLED="true" PARSER="env" PATH="shared_vars.env" />
+        </ENTRIES>
+      </EXTENSION>
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/web/app.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -207,19 +244,18 @@
       <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="Python.app (1)" />
-      <item itemvalue="Python.app" />
-      <item itemvalue="Go Build.go build buf.go" />
-      <item itemvalue="Go Build.go build main.go (1)" />
-      <item itemvalue="Python.app(1)" />
+      <item itemvalue="Go Build.go build crawler/" />
+      <item itemvalue="Go Build.go build main.go" />
+      <item itemvalue="Python.script_to_add_links" />
+      <item itemvalue="Python.web" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.app(1)" />
+        <item itemvalue="Go Build.go build crawler/" />
+        <item itemvalue="Python.script_to_add_links" />
+        <item itemvalue="Python.web" />
         <item itemvalue="Python.app" />
-        <item itemvalue="Python.app (1)" />
-        <item itemvalue="Go Build.go build main.go (1)" />
-        <item itemvalue="Go Build.go build buf.go" />
+        <item itemvalue="Go Build.go build main.go" />
       </list>
     </recent_temporary>
   </component>

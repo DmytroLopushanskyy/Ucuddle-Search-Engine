@@ -8,8 +8,9 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
-	"log"
+	"io/ioutil"
 	"math"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -19,7 +20,6 @@ import (
 
 func elasticConnect() *elasticsearch.Client {
 	fmt.Println("start connecting")
-	log.SetFlags(0)
 
 	var (
 		r map[string]interface{}
@@ -35,28 +35,28 @@ func elasticConnect() *elasticsearch.Client {
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		log.Fatalf("Error creating the client: %s", err)
+		standardLogger.Fatalf("Error creating the client: %s", err)
 	}
 
 	// Get cluster info
 	//
 	res, err := es.Info()
 	if err != nil {
-		log.Fatalf("Error getting response: %s", err)
+		standardLogger.Fatalf("Error getting response: %s", err)
 	}
 	defer res.Body.Close()
 	// Check response status
 	if res.IsError() {
-		log.Fatalf("Error: %s", res.String())
+		standardLogger.Fatalf("Error: %s", res.String())
 	}
 	// Deserialize the response into a map.
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-		log.Fatalf("Error parsing the response body: %s", err)
+		standardLogger.Fatalf("Error parsing the response body: %s", err)
 	}
 	// Print client and server version numbers.
-	log.Printf("Client: %s", elasticsearch.Version)
-	log.Printf("Server: %s", r["version"].(map[string]interface{})["number"])
-	log.Println(strings.Repeat("~", 37))
+	standardLogger.Printf("Client: %s", elasticsearch.Version)
+	standardLogger.Printf("Server: %s", r["version"].(map[string]interface{})["number"])
+	fmt.Println(strings.Repeat("~", 37))
 
 	return es
 }
@@ -64,14 +64,12 @@ func elasticConnect() *elasticsearch.Client {
 func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	var buf bytes.Buffer
 
-	// TODO: check https://stackoverflow.com/questions/55372330/what-does-limit-of-total-fields-1000-in-index-has-been-exceeded-means-in
-	//  if it cause a problem
+	lang := "ukrainian"
 	query := map[string]interface{}{
 		"settings": map[string]interface{}{
 			"analysis": map[string]interface{}{
-				"analyzer": "english",
+				"analyzer": lang,
 			},
-			"index.mapping.total_fields.limit": 3000,
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -80,15 +78,15 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 				},
 				"title": map[string]interface{}{
 					"type":                  "text",
-					"analyzer":              "english",
-					"search_analyzer":       "english",
-					"search_quote_analyzer": "english",
+					"analyzer":              lang,
+					"search_analyzer":       lang,
+					"search_quote_analyzer": lang,
 				},
 				"content": map[string]interface{}{
 					"type":                  "text",
-					"analyzer":              "english",
-					"search_analyzer":       "english",
-					"search_quote_analyzer": "english",
+					"analyzer":              lang,
+					"search_analyzer":       lang,
+					"search_quote_analyzer": lang,
 				},
 				"link": map[string]interface{}{
 					"type": "text",
@@ -101,7 +99,7 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	}
 
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
-		log.Fatalf("Error encoding query: %s", err)
+		standardLogger.Fatalf("Error encoding query: %s", err)
 	}
 
 	var res *esapi.Response
@@ -110,7 +108,7 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 		es.Indices.Create.WithBody(&buf),
 	)
 
-	fmt.Println("\nsetIndexAnalyzer")
+	standardLogger.Println("\nsetIndexAnalyzer")
 	fmt.Println(res)
 
 	if res.Status() != "200 OK" { // SKIP
@@ -125,12 +123,10 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 func setIndexFirstId(es *elasticsearch.Client, idxName string,
 	titleStr string, contentStr string) {
 	var dataArr []Site
-	var indexLastIdInt uint64
-	indexLastIdInt = 1
 
 	res, err := es.Indices.Get([]string{idxName})
 	if err != nil { // SKIP
-		log.Fatalf("Error getting the response: %s", err)
+		standardLogger.Fatalf("Error getting the response: %s", err)
 	} // SKIP
 	defer res.Body.Close() // SKIP
 
@@ -148,31 +144,76 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 			fmt.Printf("%v", dataArr)
 		}
 
-		// TODO: exist
 		setIndexAnalyzer(es, idxName)
-		elasticInsert(es, &dataArr, &idxName, &indexLastIdInt)
+		elasticInsert(es, &dataArr, &idxName, 1)
 	} else {
 		fmt.Println("\n\n ========== Index already exists")
 	}
 }
 
 func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string,
-	indexLastId *uint64) {
-	fmt.Println("\n elasticInsert start")
+	externalLastId uint64) {
+
 	var (
 		wg sync.WaitGroup
 	)
+
+	var mu sync.Mutex
+	var curIndexLastId uint64
+
+	if externalLastId == 0 {
+		// ------ get last_site_id from TaskManager
+
+		var resp *http.Response
+		var err error
+		waitResponseTime := 0
+		for i := 0; i < 5; i++ {
+			time.Sleep(time.Duration(waitResponseTime) * time.Second)
+			resp, err = http.Get(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_GET_LAST_SITE_ID"))
+
+			if err != nil {
+				standardLogger.Error("getting response to TASK_MANAGER_ENDPOINT_GET_LAST_SITE_ID (iteration ",
+					i+1, "): ", err)
+			} else {
+				break
+			}
+			waitResponseTime = int(math.Exp(float64(i + 1)))
+		}
+
+		// check for response error
+		if err != nil {
+			standardLogger.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			standardLogger.Fatal(err)
+		}
+
+		res := responseLastSiteId{}
+		json.Unmarshal(body, &res)
+
+		curIndexLastId = res.LastSiteId
+
+	} else {
+		curIndexLastId = externalLastId
+	}
+	standardLogger.Debug("curIndexLastId -- ", curIndexLastId)
 
 	// Index documents concurrently
 	//
 	for i, site := range *dataArr {
 		wg.Add(1)
 
-		go func(nDoc int, site2 Site) {
+		go func(nDoc int, site2 Site, mu *sync.Mutex, indexLastId *uint64) {
 			defer wg.Done()
 
+			mu.Lock()
 			site2.SiteId = *indexLastId
 			*indexLastId++
+			mu.Unlock()
+			//atomic.AddUint64(indexLastId, 1)
 
 			site2.AddedAt = time.Now().UTC()
 
@@ -195,6 +236,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 			for j := 0; j < 5; j++ {
 				time.Sleep(time.Duration(waitResponseTime) * time.Second)
 
+				// for testing
 				//if i == 2 {
 				res, err = req.Do(context.Background(), es)
 				//} else {
@@ -202,7 +244,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 				//}
 
 				if err != nil {
-					log.Println("elasticInsert(): Error getting response (iteration ", j+1, "): ", err)
+					standardLogger.Error("getting response (iteration ", j+1, "): ", err)
 				} else {
 					break
 				}
@@ -210,27 +252,25 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 			}
 
 			if err != nil {
-				log.Fatalf("Error getting response: %s", err)
+				standardLogger.Fatalf("Error getting response: %s", err)
 			}
 			defer res.Body.Close()
 
 			if res.IsError() {
-				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
-				log.Println("response -- ", res)
+				standardLogger.Errorf("[%s] Error indexing document ID=%d", res.Status(), i+1)
+				standardLogger.Println("response -- ", res)
 			}
-		}(i, site)
+		}(i, site, &mu, &curIndexLastId)
 
-		fmt.Println(site.Title, " inserted")
+		standardLogger.Println(site.Link, " inserted")
 	}
 	wg.Wait()
 
-	var m sync.Mutex
-	m.Lock()
+	mu.Lock()
 	*dataArr = (*dataArr)[:0]
-	m.Unlock()
+	mu.Unlock()
 
-	log.Println("insert in elastic")
-	log.Println(strings.Repeat("-", 37))
+	fmt.Println(strings.Repeat("-", 37))
 }
 
 func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
@@ -255,7 +295,7 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 	}
 
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
-		log.Fatalf("Error encoding query: %s", err)
+		standardLogger.Fatalf("Error encoding query: %s", err)
 	}
 
 	results := searchQuery(esClient, indexName, &buf)
@@ -265,7 +305,7 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 		fmt.Println("_id", result.Map()["_id"])
 		fmt.Println("site_id -- ", result.Map()["_source"].Map()["site_id"])
 		fmt.Println(result.Map()["_source"].Map()["added_at_time"])
-		fmt.Println()
+		fmt.Println("\n")
 	}
 
 	lastIdx := results[0].Map()
@@ -293,7 +333,7 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 		)
 
 		if err != nil {
-			fmt.Println("searchQuery(): Error getting response (iteration ", i+1, "): ", err)
+			standardLogger.Error("getting response (iteration ", i+1, "): ", err)
 		} else {
 			break
 		}
@@ -301,17 +341,17 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	}
 
 	if err != nil {
-		log.Fatalf("Error getting response: %s", err)
+		standardLogger.Fatalf("Error getting response: %s", err)
 	}
 	defer res.Body.Close()
 
 	if res.IsError() {
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
-			log.Fatalf("Error parsing the response body: %s", err)
+			standardLogger.Fatalf("Error parsing the response body: %s", err)
 		} else {
 			// Print the response status and error information.
-			log.Fatalf("[%s] %s: %s",
+			standardLogger.Fatalf("[%s] %s: %s",
 				res.Status(),
 				e["error"].(map[string]interface{})["type"],
 				e["error"].(map[string]interface{})["reason"],
@@ -326,7 +366,7 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	values := gjson.GetManyBytes(b.Bytes(), "hits.total.value", "took", "hits.hits")
 
 	// Print the response status, number of results, and request duration.
-	log.Printf(
+	standardLogger.Printf(
 		"[%s] %d hits; took: %dms\n",
 		res.Status(),
 		values[0].Int(),

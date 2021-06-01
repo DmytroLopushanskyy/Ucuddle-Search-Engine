@@ -17,7 +17,11 @@ type Site struct {
 }
 
 type responseLinks struct {
-	Links []string `json:"links"`
+	Links [][2]string `json:"links"`
+}
+
+type responseLastSiteId struct {
+	LastSiteId uint64 `json:"last_site_id"`
 }
 
 type set struct {

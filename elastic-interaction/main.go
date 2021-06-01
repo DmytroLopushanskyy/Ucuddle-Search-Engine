@@ -162,12 +162,9 @@ func main() {
 	//}
 	// Elasticsearch server has started. The program begins
 
-	// TODO: how
-	// to read line from user without \n with normal construction
-
 	fmt.Println("Application started")
 
-	err := godotenv.Load(path.Join("..", "crawlers-env.env"))
+	err := godotenv.Load(path.Join("..", "shared_vars.env"))
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -284,6 +281,14 @@ func main() {
 			indexes = indexes[:len(indexes)-1]
 
 			deleteIndexes(esClient, strings.Split(indexes, " "))
+
+		} else if input == "8" {
+			fmt.Println("Enter index name to create index for links")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
+
+			createIndexForLinks(esClient, idxName)
 
 		}
 	}

@@ -7,7 +7,7 @@ import jsonpickle
 from elasticsearch import Elasticsearch
 
 es = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
-                   http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
+                   http_auth=(os.environ['Username'], os.environ['Password']))
 
 
 def elastic_search(search_line):
