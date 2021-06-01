@@ -4,6 +4,7 @@ import os
 import time
 
 import jsonpickle
+from pprint import pprint
 from elasticsearch import Elasticsearch
 
 es = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
@@ -27,6 +28,11 @@ def elastic_search(search_line):
                     },
                 },
             },
+        },
+        "highlight": {
+            "fields": {
+                "content": {}
+            }
         }
     }
 
@@ -53,6 +59,8 @@ def elastic_search(search_line):
             print("Got %d Hits:" % res['hits']['total']['value'])
             for hit in res['hits']['hits']:
                 print('hit["_source"]', hit["_source"]["title"])
+                # pprint(hit)
+                hit["_source"]['highlight'] = hit["highlight"]["content"][0]
                 hits_list.append(hit["_source"])
 
             break

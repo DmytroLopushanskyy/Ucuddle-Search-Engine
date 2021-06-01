@@ -5,25 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c21fbd1b-c3aa-4ac2-a86e-d5239426f154" name="Default Changelist" comment="comment some debug prints">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/crawler_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/crawler_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/functs_with_elastic.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/functs_with_elastic.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/go.sum" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crawler/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/structures.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/structures.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/utils.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/elastic-interaction/elastic_settings.go" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/elastic_settings.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/elastic-interaction/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/elastic-interaction/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/elastic-interaction/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/task-manager/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/task-manager/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/task-manager/links_for_crawling.json" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/links_for_crawling.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/task-manager/task_manager.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/task_manager.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/web/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/files/ukr_domains.json" beforeDir="false" afterPath="$PROJECT_DIR$/files/ukr_domains.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/web/elastic_interaction.py" beforeDir="false" afterPath="$PROJECT_DIR$/web/elastic_interaction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/templates/search.html" beforeDir="false" afterPath="$PROJECT_DIR$/web/templates/search.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +58,7 @@
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
     <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/shared_vars.env" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/files" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -83,6 +69,7 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/files" />
       <recent name="$PROJECT_DIR$/web/templates" />
       <recent name="$PROJECT_DIR$" />
     </key>
@@ -251,9 +238,9 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.web" />
         <item itemvalue="Go Build.go build crawler/" />
         <item itemvalue="Python.script_to_add_links" />
-        <item itemvalue="Python.web" />
         <item itemvalue="Python.app" />
         <item itemvalue="Go Build.go build main.go" />
       </list>

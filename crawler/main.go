@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
@@ -123,37 +122,37 @@ func visitLink(lst chan<- Site, mainLink string,
 		site.Link = strings.TrimSpace((element.Request).URL.String())
 		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.ChildText("title")
 		}
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.DOM.Find("title").Text()
 		}
 	})
 
 	collector.OnHTML("title", func(element *colly.HTMLElement) {
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.Text
 		}
 	})
 
 	collector.OnHTML("h1", func(element *colly.HTMLElement) {
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.Text
 		}
 	})
 
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			e.ChildAttr(`meta[property="og:title"]`, "content")
 		}
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			e.ChildText("title")
 		}
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			e.DOM.Find("title").Text()
 		}
 	})
