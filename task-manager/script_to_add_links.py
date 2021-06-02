@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     if n_option == 1:
         slice_id = 0
-        step = 2
+        step = 10
 
         indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
         for i in range(1):

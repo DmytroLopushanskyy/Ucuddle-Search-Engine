@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
@@ -100,10 +101,16 @@ func visitLink(lst chan<- Site, mainLink string,
 		}
 	})
 
+	var pageLang string
 	var mum map[string][]string
 	mum = make(map[string][]string)
 
 	collector.OnHTML("p", func(element *colly.HTMLElement) {
+		mum[element.Name] = append(mum[element.Name], element.Text)
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+	})
+
+	collector.OnHTML("div", func(element *colly.HTMLElement) {
 		mum[element.Name] = append(mum[element.Name], element.Text)
 		site.Link = strings.TrimSpace((element.Request).URL.String())
 	})
@@ -178,11 +185,7 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	found := visited.checkIfContains(mainLink)
 
-	if !found {
-		visited.addLink(mainLink)
-		collector.Visit(mainLink)
-		atomic.AddUint64(numInternalPage, 1)
-	} else {
+	if found {
 		standardLogger.Println("checkIfContains ", mainLink, "visited -- ", found)
 		//for key, _ := range visited.linkSet {
 		//	fmt.Println(key)
@@ -190,6 +193,60 @@ func visitLink(lst chan<- Site, mainLink string,
 
 		return
 	}
+
+	lenLink := len(domain)
+	if domain[lenLink-1:lenLink] != "/" {
+		domain += "/"
+	}
+
+	fmt.Println("2link -- ", domain)
+	fmt.Println(strings.Contains(domain, "?lang=uk"))
+
+	if strings.Contains(domain, "uk-ua.") ||
+		strings.Contains(domain, "?lang=uk") || strings.Contains(domain, "/uk/") {
+		pageLang = "uk"
+	}
+
+	var pTagText string
+	if pageLang != "uk" {
+		allUkrLinks := getAllSiteUkrLinks(domain)
+
+		for _, newLink := range allUkrLinks {
+			visited.addLink(newLink)
+			collector.Visit(newLink)
+
+			//content := strings.Join(mum["p"], "\n")
+			//lenText := len(content)
+			//if lenText == 0 {
+			//	if len(site.Title) != 0 {
+			//		content = site.Title
+			//	}
+			//}
+
+			pTagText = strings.Join(mum["p"], "\n")
+
+			if checkLang(pTagText, site.Title, "Ukrainian") {
+				pageLang = "uk"
+				break
+			}
+		}
+	}
+	//else {
+	//	visited.addLink(link)
+	//	collector.Visit(link)
+	//
+	//	pTagText = strings.Join(mum["p"], "\n")
+	//}
+
+	if pageLang != "uk" {
+		standardLogger.Warn("Main page of this domain does not have ukr translation")
+		return
+	}
+
+	// TODO
+	//visited.addLink(mainLink)
+	collector.Visit(mainLink)
+	atomic.AddUint64(numInternalPage, 1)
 
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {

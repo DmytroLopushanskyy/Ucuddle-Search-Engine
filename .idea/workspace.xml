@@ -5,15 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c21fbd1b-c3aa-4ac2-a86e-d5239426f154" name="Default Changelist" comment="comment some debug prints">
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_02_05_2021,_19_26_[Default_Changelist]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_02_05_2021__19_26__Default_Changelist_.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/crawler_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/crawler_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/functs_with_elastic.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/functs_with_elastic.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/crawler/helper_funcs.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/helper_funcs.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/files/domain2multi-ua.txt" beforeDir="false" afterPath="$PROJECT_DIR$/files/ua_domains_670k.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/files/ukr_domains.json" beforeDir="false" afterPath="$PROJECT_DIR$/files/ukr_domains.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/task-manager/script_to_add_links.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/script_to_add_links.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -78,7 +73,7 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Build.go build buf.go">
+  <component name="RunManager" selected="Go Build.go build crawler/">
     <configuration name="go build buf.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
       <module name="ucuddle-crawlers" />
       <working_directory value="$PROJECT_DIR$" />
@@ -252,11 +247,11 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Build.go build buf.go" />
         <item itemvalue="Go Build.go build crawler/" />
+        <item itemvalue="Python.app" />
         <item itemvalue="Python.script_to_add_links" />
+        <item itemvalue="Go Build.go build buf.go" />
         <item itemvalue="Go Build.go build safe_lists.go" />
-        <item itemvalue="Python.web" />
       </list>
     </recent_temporary>
   </component>
