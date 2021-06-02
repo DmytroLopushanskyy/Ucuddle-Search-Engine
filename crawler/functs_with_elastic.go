@@ -305,7 +305,6 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 		fmt.Println("_id", result.Map()["_id"])
 		fmt.Println("site_id -- ", result.Map()["_source"].Map()["site_id"])
 		fmt.Println(result.Map()["_source"].Map()["added_at_time"])
-		fmt.Println("\n")
 	}
 
 	lastIdx := results[0].Map()

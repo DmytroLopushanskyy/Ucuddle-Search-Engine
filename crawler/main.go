@@ -443,7 +443,7 @@ func main() {
 					}
 				},
 				Catch: func(e Exception) {
-					standardLogger.Warn("Caught %v\n", e)
+					standardLogger.Warnf("Caught %v\n", e)
 					continueFlag = true
 				},
 			}.Do()
@@ -467,7 +467,7 @@ func main() {
 			finishedCode := time.Now()
 
 			standardLogger.Println("Iteration  ", iteration,
-				", total work time after this iteration -- ", finishedCode.Sub(startCode), "\n\n")
+				", total work time after this iteration -- ", finishedCode.Sub(startCode), "\n\n ")
 		}
 	}
 
