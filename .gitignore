@@ -1,6 +1,7 @@
 /.idea
 elastic-interaction/buf.go
 crawler/buf.go
+task-manager/buf.py
 
 # important files
 *.env

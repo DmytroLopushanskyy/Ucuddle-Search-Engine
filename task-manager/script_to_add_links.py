@@ -42,7 +42,7 @@ if __name__ == '__main__':
     if answer.lower() == "yes":
         update_config_index()
 
-    with open(os.path.join("..", "files", "ukr_domains2.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join("..", "files", "ua_domains_50.json"), "r", encoding="utf-8") as f:
         dict_links = json.load(f)
 
     options = ["Create new indexes and fill them with links OR append to the first index_name in INDEXES_ELASTIC_LINKS",
@@ -57,10 +57,10 @@ if __name__ == '__main__':
 
     if n_option == 1:
         slice_id = 0
-        step = 10
+        step = 25
 
         indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
-        for i in range(1):
+        for i in range(2):
             url = os.environ["TASK_MANAGER_URL"] + os.environ["TASK_MANAGER_ENDPOINT_ADD_LINKS"]
             response = requests.post(url, json={
                 "links_index_name": indexes_names[i],

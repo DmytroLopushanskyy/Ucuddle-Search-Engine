@@ -67,7 +67,7 @@ func readLines(path string) ([]string, error) {
 
 func visitLink(lst chan<- Site, mainLink string,
 	visited *SafeSetOfLinks, id int, numInternalPage *uint64,
-	domain string, isMainPage bool) (failed error) {
+	domain string) (failed error) {
 
 	var MaxInternalPages uint64
 	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
@@ -185,10 +185,6 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	if found {
 		standardLogger.Println("checkIfContains ", mainLink, "visited -- ", found)
-		//for key, _ := range visited.linkSet {
-		//	fmt.Println(key)
-		//}
-
 		return
 	}
 
@@ -202,58 +198,27 @@ func visitLink(lst chan<- Site, mainLink string,
 		pageLang = "uk"
 	}
 
+	visited.addLink(&mainLink)
+	collector.Visit(mainLink)
+
+	// TODO: reminder that numInternalPage != num pages saved in database
 	atomic.AddUint64(numInternalPage, 1)
-	if isMainPage && pageLang != "uk"{
-		//checkMainPageLang(domain, &mainLink, visited, &pageLang, collector, &mum, &site)
 
-		allUkrLinks := getAllSiteUkrLinks(domain)
+	site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
+		strings.Join(mum["li"], " \n ") + strings.Join(mum["div"], " \n ") +
+		strings.Join(mum["article"], " \n "))
 
-		for _, newLink := range allUkrLinks {
-			visited.addLink(&newLink)
-			collector.Visit(newLink)
-
-			site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
-				strings.Join(mum["li"], " \n ") + strings.Join(mum["div"], " \n ") +
-				strings.Join(mum["article"], " \n "))
-
-			if checkLang(&site.Content, &site.Title, "Ukrainian") {
-				pageLang = "uk"
-				mainLink = newLink
-				//domain = newLink
-				fmt.Println("checkMainPageLang() Language is Ukrainian", mainLink)
-				break
-			}
-		}
-
-		if pageLang != "uk" {
-			standardLogger.Warn("Main page of this domain does not have ukr translation ", mainLink)
-			return
-		} else {
-			fmt.Println("Main page of domain supports ukrainian language ", mainLink)
-			//fmt.Println(hyperlinksSet)
-		}
+	if pageLang != "uk" && !checkLang(&site.Content, &site.Title, "Ukrainian") {
+		fmt.Println("Site does not have ukrainian translation ", mainLink)
+		return
 	} else {
-		visited.addLink(&mainLink)
-		collector.Visit(mainLink)
-
-		site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
-			strings.Join(mum["li"], " \n ") + strings.Join(mum["div"], " \n ") +
-			strings.Join(mum["article"], " \n "))
-
-		if !checkLang(&site.Content, &site.Title, "Ukrainian") {
-			fmt.Println("Site does not have ukrainian translation ", mainLink)
-			return
-		} else {
-			fmt.Println("Ukrainian website ", mainLink)
-		}
+		fmt.Println("Ukrainian website ", mainLink)
 	}
 
-	isMainPage = false
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
 	}
-	fmt.Println("site.Hyperlinks", site.Hyperlinks)
 
 	if site.Link == "" {
 		return
@@ -274,8 +239,7 @@ L:
 	}
 
 	for _, s := range site.Hyperlinks {
-		//fmt.Println("First site", s)
-		visitLink(lst, s, visited, id, numInternalPage, domain, isMainPage)
+		visitLink(lst, s, visited, id, numInternalPage, domain)
 	}
 
 	return
@@ -301,7 +265,7 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 			}
 
 			visited := newSafeSetOfLinks()
-			failed = visitLink(lst, link[0], visited, id, &numInternalPage, domain, true)
+			failed = visitLink(lst, link[0], visited, id, &numInternalPage, domain)
 
 			if failed == nil {
 
@@ -457,12 +421,12 @@ func main() {
 		"application/json", responseBody)
 
 	var totalNumAddedPages uint64
-	//var continueFlag bool
+	var continueFlag bool
 	iteration := 0
 	indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
 
 	for j := 0; j < len(indexesElasticLinks); j++ {
-		//endedIdxLinksCounter := 0
+		endedIdxLinksCounter := 0
 
 		for true {
 			iteration++
@@ -470,41 +434,41 @@ func main() {
 			standardLogger.Println("Start getDomainsToParse global iteration ", iteration)
 
 			//// ================== get links from TaskManager ==================
-			//res := responseLinks{}
-			//
-			//if endedIdxLinksCounter == 0 {
-			//	getDomainsToParse(&res, false)
-			//	standardLogger.Println("get domains taken: false, parsed: false")
-			//} else if endedIdxLinksCounter == 1 {
-			//	getDomainsToParse(&res, true)
-			//	standardLogger.Println("get domains taken: true, parsed: false")
-			//} else {
-			//	standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
-			//	break
-			//}
-			//
-			//continueFlag = false
-			//
-			//Block{
-			//	Try: func() {
-			//		standardLogger.Println("res.Links[0][0]", res.Links[0][0])
-			//		if res.Links[0][0] == "links ended" {
-			//			endedIdxLinksCounter++
-			//			continueFlag = true
-			//		}
-			//	},
-			//	Catch: func(e Exception) {
-			//		standardLogger.Warnf("Caught %v\n", e)
-			//		continueFlag = true
-			//	},
-			//}.Do()
-			//
-			//if continueFlag {
-			//	continue
-			//}
+			res := responseLinks{}
+
+			if endedIdxLinksCounter == 0 {
+				getDomainsToParse(&res, false)
+				standardLogger.Println("get domains taken: false, parsed: false")
+			} else if endedIdxLinksCounter == 1 {
+				getDomainsToParse(&res, true)
+				standardLogger.Println("get domains taken: true, parsed: false")
+			} else {
+				standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
+				break
+			}
+
+			continueFlag = false
+
+			Block{
+				Try: func() {
+					standardLogger.Println("res.Links[0][0]", res.Links[0][0])
+					if res.Links[0][0] == "links ended" {
+						endedIdxLinksCounter++
+						continueFlag = true
+					}
+				},
+				Catch: func(e Exception) {
+					standardLogger.Warnf("Caught %v\n", e)
+					continueFlag = true
+				},
+			}.Do()
+
+			if continueFlag {
+				continue
+			}
 
 			// TODO: return back
-			//links := res.Links
+			links := res.Links
 			//links := [][2]string{
 			//	{"https://uk.wikipedia.org/wiki/%D0%93%D0%BE%D0%BB%D0%BE%D0%B2%D0%BD%D0%B0_%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0", "1"},
 			//	{"https://www.wikipedia.org/", "2"},
@@ -514,9 +478,10 @@ func main() {
 			//	{"https://www.ukr.net/", "4"},
 			//	{"https://www.pravda.com.ua/", "5"},
 			//}
-			links := [][2]string {
-				{"https://ru.wikipedia.org/wiki/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0", "1"},
-			}
+			//links := [][2]string {
+			//	{"https://uk.wikipedia.org/wiki/%D0%A4%D0%B0%D1%80%D0%B5%D1%80%D1%81%D1%8C%D0%BA%D1%96_%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%D0%B8", "1"},
+			//}
+
 			standardLogger.Println("start len(links) -- ", len(links))
 			standardLogger.Println("first taken link -- ", links[0])
 			standardLogger.Println("last taken link -- ", links[len(links)-1])
@@ -532,10 +497,7 @@ func main() {
 
 			standardLogger.Println("Iteration  ", iteration,
 				", total work time after this iteration -- ", finishedCode.Sub(startCode), "\n\n ")
-			break
 		}
-		// TODO: return back
-		break
 	}
 
 	//time.Sleep(1)

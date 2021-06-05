@@ -111,7 +111,7 @@ func findNthSymbol(content *string, symbol string, nOccurrences int) int {
 
 func checkLang(pTagText *string, siteTitle *string, compareLang string) bool {
 	var content string
-	enoughLenChunk := 400
+	enoughLenChunk := 2000
 	lenText := len(*pTagText)
 	if lenText == 0 {
 		content = *siteTitle
@@ -135,7 +135,9 @@ func checkLang(pTagText *string, siteTitle *string, compareLang string) bool {
 		textChunk = content
 	}
 
+	textChunk = strings.Join(strings.Fields(textChunk), " ")
 	chunkLang := whatlanggo.DetectLang(textChunk)
+
 	if whatlanggo.Langs[chunkLang] == compareLang {
 		return true
 	}
