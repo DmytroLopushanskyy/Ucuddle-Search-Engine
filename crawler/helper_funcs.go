@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/abadojack/whatlanggo"
+	"github.com/gocolly/colly"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -92,12 +93,12 @@ func setParsedLink(linkId string) {
 	defer resp.Body.Close()
 }
 
-func findNthSymbol(content string, symbol string, nOccurrences int) int {
+func findNthSymbol(content *string, symbol string, nOccurrences int) int {
 	startPos := 0
-	endPos := len(content)
+	endPos := len(*content)
 	pos := -1
 	for i := 0; i < nOccurrences; i++ {
-		pos = strings.Index(content[startPos: endPos], symbol)
+		pos = strings.Index((*content)[startPos: endPos], symbol)
 		if pos == -1 {
 			return -1
 		}
@@ -108,14 +109,14 @@ func findNthSymbol(content string, symbol string, nOccurrences int) int {
 	return startPos - 1
 }
 
-func checkLang(pTagText string, siteTitle string, compareLang string) bool {
+func checkLang(pTagText *string, siteTitle *string, compareLang string) bool {
 	var content string
 	enoughLenChunk := 400
-	lenText := len(pTagText)
+	lenText := len(*pTagText)
 	if lenText == 0 {
-		content = siteTitle
+		content = *siteTitle
 	} else {
-		content = pTagText
+		content = *pTagText
 	}
 
 	var textChunk string
@@ -135,20 +136,40 @@ func checkLang(pTagText string, siteTitle string, compareLang string) bool {
 	}
 
 	chunkLang := whatlanggo.DetectLang(textChunk)
-	fmt.Println("whatlanggo.Langs[chunkLang] -- ", whatlanggo.Langs[chunkLang])
-	fmt.Println("textChunk -- ", textChunk)
 	if whatlanggo.Langs[chunkLang] == compareLang {
 		return true
 	}
 	return false
 }
 
-func findCharPos(str string, char string, numOccurrences int, reversed bool) int {
-	lenString := len(str)
+func checkMainPageLang(domain string, mainLink *string, visited *SafeSetOfLinks, pageLang *string,
+					collector *colly.Collector, mum *map[string][]string,
+					site *Site) {
+	allUkrLinks := getAllSiteUkrLinks(domain)
+
+	for _, newLink := range allUkrLinks {
+		visited.addLink(&newLink)
+		collector.Visit(newLink)
+
+		(*site).Content = strings.TrimSpace(strings.Join((*mum)["p"], " \n ") +
+			strings.Join((*mum)["li"], " \n ") + strings.Join((*mum)["div"], " \n ") +
+			strings.Join((*mum)["article"], " \n "))
+
+		if checkLang(&(*site).Content, &site.Title, "Ukrainian") {
+			*pageLang = "uk"
+			*mainLink = newLink
+			fmt.Println("checkMainPageLang() Language is Ukrainian", *mainLink)
+			break
+		}
+	}
+}
+
+func findCharPos(str *string, char string, numOccurrences int, reversed bool) int {
+	lenString := len(*str)
 
 	if !reversed {
 		for i := 0; i < lenString; i++ {
-			if str[i:i+1] == char {
+			if (*str)[i:i+1] == char {
 				numOccurrences--
 				if numOccurrences == 0 {
 					return i
@@ -157,7 +178,7 @@ func findCharPos(str string, char string, numOccurrences int, reversed bool) int
 		}
 	} else {
 		for i := lenString - 1; i >= 0; i-- {
-			if str[i:i+1] == char {
+			if (*str)[i:i+1] == char {
 				numOccurrences--
 				if numOccurrences == 0 {
 					return i
@@ -202,8 +223,9 @@ func getAllSiteUkrLinks(linkToChange string) []string {
 
 	if !strings.Contains(linkToChange, ".ua/") {
 		// add new link change
-		endSubstringPos := findCharPos(linkToChange, "/", 3, false)
-		startDomainPos := findCharPos(linkToChange[:endSubstringPos], ".", 1, true)
+		endSubstringPos := findCharPos(&linkToChange, "/", 3, false)
+		sublink := linkToChange[:endSubstringPos]
+		startDomainPos := findCharPos(&sublink, ".", 1, true)
 		if startDomainPos != -1 {
 			arrayLinks = append(arrayLinks, linkToChange[:startDomainPos]+".ua/")
 		}

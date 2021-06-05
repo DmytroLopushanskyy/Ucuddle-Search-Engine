@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/gocolly/colly"
 	"strings"
 	"testing"
 )
@@ -93,6 +95,101 @@ func EqualArrays(a []string, b []string) bool {
 	return true
 }
 
+func setUpCollector(collector *colly.Collector, site *Site, mum *map[string][]string,
+	hyperlinksSet *set) {
+	collector.OnRequest(func(request *colly.Request) {
+		standardLogger.Println("Visiting", request.URL.String())
+	})
+
+	collector.OnResponse(func(response *colly.Response) {
+		if response.StatusCode != 200 {
+			standardLogger.Println(response.StatusCode)
+		}
+	})
+
+	collector.OnError(func(response *colly.Response, err error) {
+		if response.StatusCode != 200 && response.StatusCode != 0 {
+			standardLogger.Println(response.StatusCode)
+		}
+	})
+
+	collector.OnHTML("p", func(element *colly.HTMLElement) {
+		(*mum)[element.Name] = append((*mum)[element.Name], element.Text)
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+	})
+
+	collector.OnHTML("div", func(element *colly.HTMLElement) {
+		(*mum)[element.Name] = append((*mum)[element.Name], element.Text)
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+	})
+
+	collector.OnHTML("li", func(element *colly.HTMLElement) {
+		(*mum)[element.Name] = append((*mum)[element.Name], element.Text)
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+	})
+
+	collector.OnHTML("article", func(element *colly.HTMLElement) {
+		(*mum)[element.Name] = append((*mum)[element.Name], element.Text)
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+	})
+
+	collector.OnHTML("head", func(element *colly.HTMLElement) {
+		site.Link = strings.TrimSpace((element.Request).URL.String())
+
+		if len(site.Title) < 3 {
+			site.Title = element.ChildText("title")
+		}
+
+		if len(site.Title) < 3 {
+			site.Title = element.DOM.Find("title").Text()
+		}
+	})
+
+	collector.OnHTML("title", func(element *colly.HTMLElement) {
+		if len(site.Title) < 3 {
+			site.Title = element.Text
+		}
+	})
+
+	collector.OnHTML("h1", func(element *colly.HTMLElement) {
+		if len(site.Title) < 3 {
+			site.Title = element.Text
+		}
+	})
+
+	collector.OnHTML("html", func(e *colly.HTMLElement) {
+		if len(site.Title) < 3 {
+			e.ChildAttr(`meta[property="og:title"]`, "content")
+		}
+
+		if len(site.Title) < 3 {
+			e.ChildText("title")
+		}
+
+		if len(site.Title) < 3 {
+			e.DOM.Find("title").Text()
+		}
+	})
+
+	collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
+		link := strings.TrimSpace(e.Request.AbsoluteURL(e.Attr("href")))
+		if link != "" && len(link) > 5 && link[:5] == "https" {
+			// clear from link parameters
+			startLinkParameters := strings.Index(link, "?")
+
+			if startLinkParameters > 0 {
+				link = link[:startLinkParameters]
+			}
+
+			if link[len(link)-1:len(link)] == "/" {
+				link = link[:len(link)-1]
+			}
+
+			hyperlinksSet.Add(&link)
+		}
+	})
+}
+
 func TestGetAllSiteUkrLinks1(t *testing.T) {
 	got := getAllSiteUkrLinks("https://www.example.com/")
 	expected := []string{"https://www.example.com/", "https://www.example.com/uk/", "https://www.example.com/ua/", "https://www.example.com/ukr/",
@@ -166,4 +263,48 @@ func TestGetAllSiteUkrLinksRealLink2(t *testing.T) {
 		t.Errorf("got -- %s; expected -- %s", strings.Join(got, ", "),
 			strings.Join(expected, ", "))
 	}
+}
+
+func TestCheckLang(t *testing.T) {
+	testLinks := []string {"https://ru.wikipedia.org/wiki/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0", "https://gordonua.com/"}
+	var pageLangs []string
+	var pageLang string
+	for _, mainLink := range testLinks {
+		allUkrLinks := getAllSiteUkrLinks(mainLink)
+		pageLang = "not ukrainian"
+
+		collector := colly.NewCollector()
+		site := Site{}
+		hyperlinksSet := NewSet()
+		var mum map[string][]string
+		mum = make(map[string][]string)
+
+		setUpCollector(collector, &site, &mum, hyperlinksSet)
+		for _, newLink := range allUkrLinks {
+			collector.Visit(newLink)
+			fmt.Println("site.Title", site.Title)
+
+			site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
+				strings.Join(mum["li"], " \n ") + strings.Join(mum["div"], " \n ") +
+				strings.Join(mum["article"], " \n "))
+
+			if checkLang(&site.Content, &site.Title, "Ukrainian") {
+				mainLink = newLink
+				pageLang = "ukrainian"
+				fmt.Println("checkMainPageLang() Language is Ukrainian ", mainLink)
+				break
+			}
+		}
+
+		pageLangs = append(pageLangs, pageLang)
+	}
+
+	for i := 0; i < len(testLinks); i++ {
+		fmt.Println(testLinks[i], " -- ", pageLangs[i])
+	}
+
+	//if !EqualArrays(got, expected) {
+	//	t.Errorf("got -- %s; expected -- %s", strings.Join(got, ", "),
+	//		strings.Join(expected, ", "))
+	//}
 }

@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+
 func elasticConnect() *elasticsearch.Client {
 	fmt.Println("start connecting")
 
@@ -121,7 +122,7 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 }
 
 func setIndexFirstId(es *elasticsearch.Client, idxName string,
-	titleStr string, contentStr string) {
+	titleStr string) {
 	var dataArr []Site
 
 	res, err := es.Indices.Get([]string{idxName})
