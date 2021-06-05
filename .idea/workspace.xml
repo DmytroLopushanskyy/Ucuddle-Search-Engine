@@ -6,8 +6,15 @@
   <component name="ChangeListManager">
     <list default="true" id="c21fbd1b-c3aa-4ac2-a86e-d5239426f154" name="Default Changelist" comment="comment some debug prints">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/crawler_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/crawler_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/functs_with_elastic.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/functs_with_elastic.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/helper_funcs.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/helper_funcs.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/crawler/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/files/ukr_domains.json" beforeDir="false" afterPath="$PROJECT_DIR$/files/ukr_domains.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/safe_lists.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/safe_lists.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/crawler/structures.go" beforeDir="false" afterPath="$PROJECT_DIR$/crawler/structures.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/elastic-interaction/elastic_settings.go" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/elastic_settings.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/elastic-interaction/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/elastic-interaction/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/files/ukr_domains2.json" beforeDir="false" afterPath="$PROJECT_DIR$/files/ukr_domains2.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/task-manager/script_to_add_links.py" beforeDir="false" afterPath="$PROJECT_DIR$/task-manager/script_to_add_links.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -100,12 +107,14 @@
       <directory value="$PROJECT_DIR$/crawler" />
       <method v="2" />
     </configuration>
-    <configuration name="go build safe_lists.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+    <configuration name="TestCheckLang in crawler_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="ucuddle-crawlers" />
-      <working_directory value="$PROJECT_DIR$" />
+      <working_directory value="$PROJECT_DIR$/crawler" />
+      <framework value="gotest" />
       <kind value="FILE" />
-      <filePath value="$PROJECT_DIR$/crawler/safe_lists.go" />
       <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/crawler/crawler_test.go" />
+      <pattern value="^\QTestCheckLang\E$" />
       <method v="2" />
     </configuration>
     <configuration name="app" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
@@ -205,53 +214,20 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="web" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="ucuddle-crawlers" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="$PROJECT_DIR$/../venv/bin/python3.8" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/web" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="net.ashald.envfile">
-        <option name="IS_ENABLED" value="true" />
-        <option name="IS_SUBST" value="false" />
-        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
-        <option name="IS_IGNORE_MISSING_FILES" value="false" />
-        <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
-        <ENTRIES>
-          <ENTRY IS_ENABLED="true" PARSER="runconfig" />
-          <ENTRY IS_ENABLED="true" PARSER="env" PATH="shared_vars.env" />
-        </ENTRIES>
-      </EXTENSION>
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/web/app.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <list>
       <item itemvalue="Go Build.go build crawler/" />
-      <item itemvalue="Go Build.go build safe_lists.go" />
       <item itemvalue="Go Build.go build buf.go" />
       <item itemvalue="Python.app" />
       <item itemvalue="Python.script_to_add_links" />
-      <item itemvalue="Python.web" />
+      <item itemvalue="Go Test.TestCheckLang in crawler_test.go" />
     </list>
     <recent_temporary>
       <list>
         <item itemvalue="Go Build.go build crawler/" />
+        <item itemvalue="Go Test.TestCheckLang in crawler_test.go" />
         <item itemvalue="Python.app" />
         <item itemvalue="Python.script_to_add_links" />
         <item itemvalue="Go Build.go build buf.go" />
-        <item itemvalue="Go Build.go build safe_lists.go" />
       </list>
     </recent_temporary>
   </component>
