@@ -27,9 +27,6 @@ func NewLogger() *StandardLogger {
 
 	var standardLogger = &StandardLogger{baseLogger}
 
-	//standardLogger.SetReportCaller(true)
-	//standardLogger.Formatter = &logrus.JSONFormatter{}
-
 	standardLogger.SetReportCaller(true)
 	formatter := &logrus.TextFormatter{
 		TimestampFormat:        "02-01-2006 15:04:05", // the "time" field configuratiom

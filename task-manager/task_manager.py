@@ -20,19 +20,24 @@ class TaskManager:
 
         index_elastic_links = os.environ["INDEXES_ELASTIC_LINKS"]
         self.index_elastic_links = index_elastic_links.split()[config.POS_ELASTIC_INDEX_LINKS]
-        self.index_elastic_sites = os.environ["INDEX_ELASTIC_COLLECTED_DATA"]
+
+        self.indexes_elastic_sites = dict()
+        self.indexes_elastic_sites["ukr"] = os.environ["INDEX_ELASTIC_UKR_COLLECTED_DATA"]
+        self.indexes_elastic_sites["ru"] = os.environ["INDEX_ELASTIC_RU_COLLECTED_DATA"]
 
         self.last_id_in_index_sites = -1
 
-        try:
-            res = self.es_client.get(index=self.index_elastic_sites, id=0)
-            print("res -- ", res)
-            index_exist = True
-        except elasticsearch.exceptions.NotFoundError:
-            index_exist = False
+        for index_elastic_sites in self.indexes_elastic_sites.values():
+            try:
+                res = self.es_client.get(index=index_elastic_sites, id=0)
+                print("res -- ", res)
+                index_exist = True
+            except elasticsearch.exceptions.NotFoundError:
+                index_exist = False
 
-        if index_exist:
-            self.last_id_in_index_sites = self.get_last_site_id_in_index()
+            if index_exist:
+                last_id_in_index_sites = self.get_last_site_id_in_index(index_elastic_sites)
+                self.last_id_in_index_sites = max(self.last_id_in_index_sites, last_id_in_index_sites)
 
     def create_new_index(self, index_name):
         logging.debug("Creating new index")
@@ -54,7 +59,7 @@ class TaskManager:
                         {"term": {"taken": taken_value}},
                         {"term": {"parsed": False}}
                     ]
-                 }
+                }
             },
             "size": num_links,
 
@@ -69,7 +74,7 @@ class TaskManager:
             res = self.es_client.search(
                 index=self.index_elastic_links,
                 body=jsonpickle.encode(query, unpicklable=False),
-                request_timeout=100,
+                request_timeout=150,
             )
 
             links = dict()
@@ -99,10 +104,12 @@ class TaskManager:
                     "parsed": False,
                     "added_at_time": datetime.now()
                 },
-                request_timeout=60
+                request_timeout=150
             )
 
             last_link_id += 1
+            if last_link_id % 100 == 0:
+                print("Currently added last_link_id -- ", last_link_id)
 
         print("last_link_id after adding links -- ", last_link_id)
 
@@ -156,8 +163,8 @@ class TaskManager:
             return 0
         except:
             return -1
-        
-    def get_last_site_id_in_index(self):
+
+    def get_last_site_id_in_index(self, index_elastic_sites):
         query = {
             "query": {
                 "match_all": {},
@@ -166,9 +173,9 @@ class TaskManager:
             "size": 1,
 
             "sort": {
-              "site_id": {
+                "site_id": {
                     "order": "desc",
-              },
+                },
             },
         }
 
@@ -179,9 +186,9 @@ class TaskManager:
             time.sleep(waiting_response_time)
 
             res = self.es_client.search(
-                index=self.index_elastic_sites,
+                index=index_elastic_sites,
                 body=jsonpickle.encode(query, unpicklable=False),
-                request_timeout=100
+                request_timeout=150
             )
 
             try:
@@ -190,3 +197,10 @@ class TaskManager:
                 logging.error("set_parsed_link() es_client.update invalid response", res)
 
             waiting_response_time = math.exp(i + 1)
+
+    def get_last_site_id_in_all_indexes(self):
+        last_site_id = -1
+        for index_name in self.indexes_elastic_sites.values():
+            last_site_id = max(last_site_id, self.get_last_site_id_in_index(index_name))
+
+        return last_site_id

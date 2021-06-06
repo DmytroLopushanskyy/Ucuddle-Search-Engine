@@ -12,12 +12,10 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"sync/atomic"
-	"time"
-	//"strconv"
 	"strings"
 	"sync"
-	//"time"
+	"sync/atomic"
+	"time"
 )
 
 func writeSliceJSON(data []Site, writefile string) {
@@ -70,18 +68,23 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	var MaxInternalPages uint64
 	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
-	if *numInternalPage >= MaxInternalPages {
+	if *numInternalPage > MaxInternalPages {
 		return
 	}
 
 	var site Site
 	hyperlinksSet := NewSet()
 
+	var pageLang string
+	var mum map[string][]string
+	mum = make(map[string][]string)
+
 	if !strings.Contains(mainLink, domain) {
 		return
 	}
 
 	collector := colly.NewCollector()
+
 	collector.OnRequest(func(request *colly.Request) {
 		standardLogger.Println("Visiting", request.URL.String())
 	})
@@ -99,59 +102,72 @@ func visitLink(lst chan<- Site, mainLink string,
 		}
 	})
 
-	var mum map[string][]string
-	mum = make(map[string][]string)
-
 	collector.OnHTML("p", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
+	})
+
+	collector.OnHTML("div", func(element *colly.HTMLElement) {
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
 	})
 
 	collector.OnHTML("li", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
 	})
 
 	collector.OnHTML("article", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
 	})
 
 	collector.OnHTML("head", func(element *colly.HTMLElement) {
 		site.Link = strings.TrimSpace((element.Request).URL.String())
-		// site.Title = site.Title + " " + element.ChildAttr(`title`,)
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.ChildText("title")
 		}
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.DOM.Find("title").Text()
 		}
 	})
 
 	collector.OnHTML("title", func(element *colly.HTMLElement) {
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.Text
 		}
 	})
 
 	collector.OnHTML("h1", func(element *colly.HTMLElement) {
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			site.Title = element.Text
 		}
 	})
 
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			e.ChildAttr(`meta[property="og:title"]`, "content")
 		}
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			e.ChildText("title")
 		}
 
-		if site.Title == " " {
+		if len(site.Title) < 3 {
 			e.DOM.Find("title").Text()
 		}
 	})
@@ -170,29 +186,61 @@ func visitLink(lst chan<- Site, mainLink string,
 				link = link[:len(link)-1]
 			}
 
-			hyperlinksSet.Add(link)
+			hyperlinksSet.Add(&link)
 		}
-
 	})
 
-	found := visited.checkIfContains(mainLink)
+	found := visited.checkIfContains(&mainLink)
 
-	if !found {
-		visited.addLink(mainLink)
-		collector.Visit(mainLink)
-		atomic.AddUint64(numInternalPage, 1)
-	} else {
+	if found {
 		standardLogger.Println("checkIfContains ", mainLink, "visited -- ", found)
 		return
 	}
+
+	lenLink := len(domain)
+	if domain[lenLink-1:lenLink] != "/" {
+		domain += "/"
+	}
+
+	if strings.Contains(domain, "uk-ua.") ||
+		strings.Contains(domain, "?lang=uk") || strings.Contains(domain, "/uk/") {
+		pageLang = "ukr"
+	} else if strings.Contains(domain, "ru-ru.") || strings.Contains(domain, "https://ru.") ||
+		strings.Contains(domain, "?lang=ru") || strings.Contains(domain, "/ru/") {
+		pageLang = "ru"
+	}
+
+	visited.addLink(&mainLink)
+	collector.Visit(mainLink)
+
+	// TODO: reminder that numInternalPage != num pages saved in database
+	atomic.AddUint64(numInternalPage, 1)
+
+	site.Content = strings.TrimSpace(strings.Join(mum["p"], "\n") +
+		strings.Join(mum["li"], "\n") + strings.Join(mum["div"], "\n") +
+		strings.Join(mum["article"], "\n"))
+
+	if pageLang != "ukr" && pageLang != "ru" {
+		siteLang := checkLang(&site.Content, &site.Title)
+		if siteLang == "Ukrainian" {
+			pageLang = "ukr"
+		} else if siteLang == "Russian" {
+			pageLang = "ru"
+		}
+	}
+
+	if pageLang != "ukr" && pageLang != "ru" {
+		standardLogger.Println("Site does not have ukr and ru translations ", mainLink)
+		return
+	}
+
+	standardLogger.Println("Website supports needed languages -- ", pageLang, " ", mainLink)
+	site.Lang = pageLang
 
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
 	}
-
-	site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
-		strings.Join(mum["li"], " \n ") + strings.Join(mum["article"], " \n "))
 
 	if site.Link == "" {
 		return
@@ -220,8 +268,10 @@ L:
 }
 
 func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
-	wg *sync.WaitGroup, visited *SafeSetOfLinks, failedLinks chan map[string]string, id int) {
+	wg *sync.WaitGroup, failedLinks chan map[string]string, id int) {
 
+	var domain string
+	var endDomainPos int
 	for true {
 		select {
 		case link := <-linksQueue:
@@ -229,7 +279,15 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 			var failed error
 			var numInternalPage uint64
 			numInternalPage = 0
-			failed = visitLink(lst, link[0], visited, id, &numInternalPage, link[0])
+			domain = link[0]
+
+			endDomainPos = findNthSymbol(&link[0], "/", 3)
+			if endDomainPos != -1 {
+				domain = domain[:endDomainPos]
+			}
+
+			visited := newSafeSetOfLinks()
+			failed = visitLink(lst, link[0], visited, id, &numInternalPage, domain)
 
 			if failed == nil {
 
@@ -252,7 +310,7 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 	}
 }
 
-func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, links *[][2]string,
+func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	numberOfWorkers int, numberOfJobs int, lenLinks int) uint64 {
 
 	var wg sync.WaitGroup
@@ -264,6 +322,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 	finishElasticInsert := make(chan bool)
 
 	allParsedLinks := newSafeSetOfLinks()
+	packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE_SAVE_INDEX"))
 
 	var numAddedPages uint64
 	go func(finishElasticInsert chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
@@ -275,16 +334,15 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 			select {
 			// take from channel of parsed sites and insert in elasticsearch
 			case site := <-sites:
-				found := allParsedLinks.checkIfContains(site.Link)
+				found := allParsedLinks.checkIfContains(&site.Link)
 				if !found {
-					allParsedLinks.addLink(site.Link)
-					sliceSites.addSite(site)
+					allParsedLinks.addLink(&site.Link)
+					sliceSites.addSite(&site)
 					atomic.AddUint64(numAddedPages, 1)
 				}
 
-				packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE"))
 				if len(sliceSites.actualSites) >= packageSize {
-					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
+					elasticInsert(esClient, &sliceSites.actualSites, 0)
 				}
 
 			case <-finishElasticInsert:
@@ -294,10 +352,8 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 			}
 		}
 
-		standardLogger.Println("len(sites) -- ", len(sites))
-
 		if len(sliceSites.actualSites) != 0 {
-			elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
+			elasticInsert(esClient, &sliceSites.actualSites,0)
 		}
 
 		defer wg.Done()
@@ -306,10 +362,8 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 	linksQueue := make(chan [2]string)
 	done := make(chan bool)
 
-	// TODO: replace visited variable in crawl function
-	visited := newSafeSetOfLinks()
 	for i := 0; i < numberOfWorkers; i++ {
-		go crawl(sites, linksQueue, done, killSignal, &wg, visited, failedLinks, i)
+		go crawl(sites, linksQueue, done, killSignal, &wg, failedLinks, i)
 	}
 
 	for j := 0; j < numberOfJobs; j++ {
@@ -330,7 +384,6 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
 	}
-	standardLogger.Println("at the end of code len(done) -- ", len(done))
 
 	close(killSignal)
 	close(finishElasticInsert)
@@ -359,8 +412,8 @@ func main() {
 	startCode := time.Now()
 
 	// load .env file
-	err := godotenv.Load(path.Join("shared_vars.env"))
-	//err := godotenv.Load(path.Join("..", "shared_vars.env"))
+	//err := godotenv.Load(path.Join("shared_vars.env"))
+	err := godotenv.Load(path.Join("..", "shared_vars.env"))
 
 	if err != nil {
 		standardLogger.Fatal("Error loading .env file")
@@ -372,10 +425,11 @@ func main() {
 	// ================== elastic connection ==================
 	esClient := elasticConnect()
 
-	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
+	insertUkrIdxName := os.Getenv("INDEX_ELASTIC_UKR_COLLECTED_DATA")
+	insertRuIdxName := os.Getenv("INDEX_ELASTIC_RU_COLLECTED_DATA")
 	titleStr := "start index"
-	contentStr := "first content1"
-	setIndexFirstId(esClient, insertIdxName, titleStr, contentStr)
+	setIndexFirstId(esClient, insertUkrIdxName, titleStr, "ukr")
+	setIndexFirstId(esClient, insertRuIdxName, titleStr, "ru")
 	// end elastic connection
 
 	// ================== set last site id in Task Manager ==================
@@ -388,6 +442,7 @@ func main() {
 
 	var totalNumAddedPages uint64
 	var continueFlag bool
+	var iterationNumAddedPages uint64
 	iteration := 0
 	indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
 
@@ -399,16 +454,13 @@ func main() {
 
 			standardLogger.Println("Start getDomainsToParse global iteration ", iteration)
 
-			// ================== get links from TaskManager ==================
+			//// ================== get links from TaskManager ==================
 			res := responseLinks{}
 
 			if endedIdxLinksCounter == 0 {
 				getDomainsToParse(&res, false)
 				standardLogger.Println("get domains taken: false, parsed: false")
 			} else if endedIdxLinksCounter == 1 {
-				getDomainsToParse(&res, true)
-				standardLogger.Println("get domains taken: true, parsed: false")
-			} else {
 				standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
 				break
 			}
@@ -423,7 +475,7 @@ func main() {
 					}
 				},
 				Catch: func(e Exception) {
-					standardLogger.Warn("Caught %v\n", e)
+					standardLogger.Warnf("Caught %v\n", e)
 					continueFlag = true
 				},
 			}.Do()
@@ -433,6 +485,7 @@ func main() {
 			}
 
 			links := res.Links
+
 			standardLogger.Println("start len(links) -- ", len(links))
 			standardLogger.Println("first taken link -- ", links[0])
 			standardLogger.Println("last taken link -- ", links[len(links)-1])
@@ -440,18 +493,18 @@ func main() {
 
 			// ------ end getting links from TaskManager
 
-			totalNumAddedPages += crawlLinksPackage(esClient, insertIdxName, &links,
+			iterationNumAddedPages = crawlLinksPackage(esClient, &links,
 				numberOfWorkers, numberOfJobs, len(links))
 
-			standardLogger.Println("Iteration  ", iteration, ", after this iteration totalNumAddedPages -- ", totalNumAddedPages)
+			totalNumAddedPages += iterationNumAddedPages
+
+			standardLogger.Println("Iteration  ", iteration, ", after this iteration iterationNumAddedPages -- ",
+				iterationNumAddedPages, "\ntotalNumAddedPages -- ", totalNumAddedPages)
 			finishedCode := time.Now()
+			iterationTime := finishedCode.Sub(startCode)
 
 			standardLogger.Println("Iteration  ", iteration,
-				", total work time after this iteration -- ", finishedCode.Sub(startCode), "\n\n")
+				", total work time after this iteration -- ", iterationTime, "\n\n ")
 		}
 	}
-
-	//time.Sleep(1)
-	//crawl(links[numJobs-1], jobs, results, &sites)
-	//writeJSON(sites, "out.json")
 }

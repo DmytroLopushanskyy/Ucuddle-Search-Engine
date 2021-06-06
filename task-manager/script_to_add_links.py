@@ -42,11 +42,12 @@ if __name__ == '__main__':
     if answer.lower() == "yes":
         update_config_index()
 
-    with open(os.path.join("..", "files", "page_rank_test_domains.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join("..", "files", "ukr_domains2.json"), "r", encoding="utf-8") as f:
         dict_links = json.load(f)
 
-    options = ["Create new indexes and fill them with links",
-               "Add links to existing index"]
+    options = ["Create new indexes and fill them with links OR append to the first index_name in INDEXES_ELASTIC_LINKS",
+               "Add links to existing index",
+               "Reset LAST_LINK_ID_KEY_ELASTIC to 1"]
     print("Choose an option of adding link:")
 
     for i, option in enumerate(options):
@@ -56,7 +57,7 @@ if __name__ == '__main__':
 
     if n_option == 1:
         slice_id = 0
-        step = 20
+        step = 2000
 
         indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
         for i in range(1):
@@ -84,3 +85,6 @@ if __name__ == '__main__':
         slice_id += step
 
         print(response, response.reason)
+
+    elif n_option == 3:
+        update_config_index()

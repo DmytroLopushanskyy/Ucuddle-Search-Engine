@@ -18,13 +18,12 @@ import (
 
 func elasticConnect() *elasticsearch.Client {
 	fmt.Println("start connecting")
-	log.SetFlags(0)
 
 	var (
 		r map[string]interface{}
 	)
 
-	// Initialize a client with the default mapping.
+	// Initialize a client with the default settings.
 	//
 	// An `ELASTICSEARCH_URL` environment variable will be used when exported.
 	//
@@ -34,28 +33,28 @@ func elasticConnect() *elasticsearch.Client {
 	}
 	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
-		log.Fatalf("Error creating the client: %s", err)
+		fmt.Printf("Error creating the client: %s", err)
 	}
 
 	// Get cluster info
 	//
 	res, err := es.Info()
 	if err != nil {
-		log.Fatalf("Error getting response: %s", err)
+		fmt.Printf("Error getting response: %s", err)
 	}
 	defer res.Body.Close()
 	// Check response status
 	if res.IsError() {
-		log.Fatalf("Error: %s", res.String())
+		fmt.Printf("Error: %s", res.String())
 	}
 	// Deserialize the response into a map.
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-		log.Fatalf("Error parsing the response body: %s", err)
+		fmt.Printf("Error parsing the response body: %s", err)
 	}
 	// Print client and server version numbers.
-	log.Printf("Client: %s", elasticsearch.Version)
-	log.Printf("Server: %s", r["version"].(map[string]interface{})["number"])
-	log.Println(strings.Repeat("~", 37))
+	fmt.Printf("Client: %s", elasticsearch.Version)
+	fmt.Printf("Server: %s", r["version"].(map[string]interface{})["number"])
+	fmt.Println(strings.Repeat("~", 37))
 
 	return es
 }
@@ -170,6 +169,15 @@ func main() {
 	}
 
 	// Before this module execution, run elasticsearch and kibana servers on your computer
+
+	// load .env file
+	err = godotenv.Load(path.Join("..", "shared_vars.env"))
+
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+
+	// ================== elastic connection ==================
 	esClient := elasticConnect()
 
 	for {
@@ -177,7 +185,8 @@ func main() {
 		functionNames := []string{"insert words", "search indexes", "delete all docs in index",
 			"get last id and print n last document titles in the index",
 			"update mapping in index", "get index mapping",
-			"delete several indexes"}
+			"delete several indexes", "create index for links",
+			"create a new index with ukr analyzer"}
 		for i, funcName := range functionNames {
 			fmt.Println(i+1, " -- ", funcName)
 		}
@@ -290,6 +299,13 @@ func main() {
 
 			createIndexForLinks(esClient, idxName)
 
+		} else if input == "9" {
+			fmt.Println("Enter index name to create index with ukr analyzer")
+			reader := bufio.NewReader(os.Stdin)
+			idxName, _ := reader.ReadString('\n')
+			idxName = idxName[:len(idxName)-1]
+
+			setIndexFirstId(esClient, idxName, "new_index")
 		}
 	}
 }

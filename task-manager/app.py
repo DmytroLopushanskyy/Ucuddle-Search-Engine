@@ -12,7 +12,7 @@ app.secret_key = config.FLASK_KEY
 app.config['SECRET_KEY'] = config.SECRET_KEY
 task_manager = TaskManager()
 
-PACKAGE_SIZE = int(os.environ["NUM_SITES_IN_PACKAGE"])
+PACKAGE_SIZE = int(os.environ["NUM_SITES_IN_PACKAGE_SAVE_INDEX"])
 
 
 # TODO: test it
@@ -57,6 +57,11 @@ def get_links():
     if len(links["links"]) == 0:
         links["links"] = [["links ended", "-1"]]
 
+        indexes_elastic_links = os.environ["INDEXES_ELASTIC_LINKS"].split()
+        if config.POS_ELASTIC_INDEX_LINKS < len(indexes_elastic_links) - 1:
+            config.POS_ELASTIC_INDEX_LINKS += 1
+            task_manager.index_elastic_links = indexes_elastic_links[config.POS_ELASTIC_INDEX_LINKS]
+
     return jsonify(links), 200
 
 
@@ -89,7 +94,7 @@ def set_parsed_link_id():
 @app.route('/task_manager/api/v1.0/set_last_site_id', methods=['POST'])
 def set_last_site_id():
     if task_manager.last_id_in_index_sites == -1:
-        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_index()
+        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_all_indexes()
 
     return "last_site_id was set up", 200
 
@@ -99,7 +104,7 @@ def get_last_site_id():
     last_id = task_manager.last_id_in_index_sites
 
     if last_id == -1:
-        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_index()
+        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_all_indexes()
         last_id = task_manager.last_id_in_index_sites
 
     task_manager.last_id_in_index_sites += PACKAGE_SIZE

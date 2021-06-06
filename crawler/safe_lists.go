@@ -1,6 +1,8 @@
 package main
 
-import "sync"
+import (
+	"sync"
+)
 
 type SafeSetOfLinks struct {
 	mu      sync.Mutex
@@ -27,32 +29,32 @@ func newSafeSetOfLinks() *SafeSetOfLinks {
 	return s
 }
 
-func (c *SafeSetOfLinks) addLink(link string) {
+func (c *SafeSetOfLinks) addLink(link *string) {
 	c.mu.Lock()
 
 	// Lock so only one goroutine at a time can access the map c.v.
-	c.linkSet[link] = exists
+	c.linkSet[*link] = exists
 	c.mu.Unlock()
 }
 
-func (c *SafeSetOfLinks) checkIfContains(link string) bool {
+func (c *SafeSetOfLinks) checkIfContains(link *string) bool {
 	c.mu.Lock()
-	_, isFound := c.linkSet[link]
+	_, isFound := c.linkSet[*link]
 	c.mu.Unlock()
 	return isFound
 }
 
-func (c *SafeListOfSites) addSite(site Site) {
+func (c *SafeListOfSites) addSite(site *Site) {
 	c.mu.Lock()
 	// Lock so only one goroutine at a time can access the map c.v.
-	c.actualSites = append(c.actualSites, site)
+	c.actualSites = append(c.actualSites, *site)
 	c.mu.Unlock()
 }
 
-func (c *SafeListOfSites) checkIfContains(site Site) (int, bool) {
+func (c *SafeListOfSites) checkIfContains(site *Site) (int, bool) {
 	c.mu.Lock()
 	for i, item := range c.actualSites {
-		if item.Link == site.Link {
+		if item.Link == (*site).Link {
 			c.mu.Unlock()
 			return i, true
 		}
