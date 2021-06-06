@@ -12,12 +12,10 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"sync/atomic"
-	"time"
-	//"strconv"
 	"strings"
 	"sync"
-	//"time"
+	"sync/atomic"
+	"time"
 )
 
 func writeSliceJSON(data []Site, writefile string) {
@@ -364,7 +362,6 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	linksQueue := make(chan [2]string)
 	done := make(chan bool)
 
-	// TODO: replace visited variable in crawl function
 	for i := 0; i < numberOfWorkers; i++ {
 		go crawl(sites, linksQueue, done, killSignal, &wg, failedLinks, i)
 	}
@@ -487,20 +484,7 @@ func main() {
 				continue
 			}
 
-			// TODO: return back
 			links := res.Links
-			//links := [][2]string{
-			//	{"https://uk.wikipedia.org/wiki/%D0%93%D0%BE%D0%BB%D0%BE%D0%B2%D0%BD%D0%B0_%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0", "1"},
-			//	{"https://www.wikipedia.org/", "2"},
-			//	{"https://gordonua.com/tags/russkij-jazyk.html", "3"},
-			//	{"https://ru.wikipedia.org/wiki/%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0", "4"},
-			//	{"https://www.mos.ru/city/about/", "3"},
-			//	{"https://www.ukr.net/", "4"},
-			//	{"https://www.pravda.com.ua/", "5"},
-			//}
-			//links := [][2]string {
-			//	{"https://uk.wikipedia.org/wiki/%D0%A4%D0%B0%D1%80%D0%B5%D1%80%D1%81%D1%8C%D0%BA%D1%96_%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%D0%B8", "1"},
-			//}
 
 			standardLogger.Println("start len(links) -- ", len(links))
 			standardLogger.Println("first taken link -- ", links[0])
@@ -523,8 +507,4 @@ func main() {
 				", total work time after this iteration -- ", iterationTime, "\n\n ")
 		}
 	}
-
-	//time.Sleep(1)
-	//crawl(links[numJobs-1], jobs, results, &sites)
-	//writeJSON(sites, "out.json")
 }

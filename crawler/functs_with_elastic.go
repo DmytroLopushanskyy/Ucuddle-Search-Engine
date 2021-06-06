@@ -301,7 +301,6 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, externalLastId uin
 			site2.SiteId = *indexLastId
 			*indexLastId++
 			mu.Unlock()
-			//atomic.AddUint64(indexLastId, 1)
 
 			site2.AddedAt = time.Now().UTC()
 
@@ -324,12 +323,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, externalLastId uin
 			for j := 0; j < 5; j++ {
 				time.Sleep(time.Duration(waitResponseTime) * time.Second)
 
-				// for testing
-				//if i == 2 {
 				res, err = req.Do(context.Background(), es)
-				//} else {
-				//	err = errors.New("test error")
-				//}
 
 				if err != nil {
 					standardLogger.Error("getting response (iteration ", j+1, "): ", err)
@@ -387,7 +381,6 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 	}
 
 	results := searchQuery(esClient, indexName, &buf)
-	//fmt.Println("result", results)
 	for i, result := range results {
 		fmt.Println(i, result.Map()["_source"].Map()["title"])
 		fmt.Println("_id", result.Map()["_id"])
