@@ -135,11 +135,11 @@ func createIndexForLinks(es *elasticsearch.Client, saveStrIdx string) {
 		es.Indices.Create.WithBody(&buf),
 	)
 
-	fmt.Println("\nsetIndexAnalyzer")
+	fmt.Println("\nsetIndexUkrAnalyzer")
 	fmt.Println(res)
 
 	if res.Status() != "200 OK" { // SKIP
-		fmt.Println("ERROR in setIndexAnalyzer():")
+		fmt.Println("ERROR in setIndexUkrAnalyzer():")
 		fmt.Println(res, err)
 		os.Exit(3)
 	}
@@ -147,7 +147,7 @@ func createIndexForLinks(es *elasticsearch.Client, saveStrIdx string) {
 	defer res.Body.Close()
 }
 
-func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
+func setIndexUkrAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	var buf bytes.Buffer
 
 	//lang := "ukrainian"
@@ -198,11 +198,11 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 		es.Indices.Create.WithBody(&buf),
 	)
 
-	fmt.Println("\nsetIndexAnalyzer")
+	fmt.Println("\nsetIndexUkrAnalyzer")
 	fmt.Println(res)
 
 	if res.Status() != "200 OK" { // SKIP
-		fmt.Println("ERROR in setIndexAnalyzer():")
+		fmt.Println("ERROR in setIndexUkrAnalyzer():")
 		fmt.Println(res, err)
 		os.Exit(3)
 	}
@@ -234,7 +234,7 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 			fmt.Printf("%v", dataArr)
 		}
 
-		setIndexAnalyzer(es, idxName)
+		setIndexUkrAnalyzer(es, idxName)
 		elasticInsert(es, &dataArr, &idxName, 1)
 	} else {
 		fmt.Println("\n\n ========== Index already exists")

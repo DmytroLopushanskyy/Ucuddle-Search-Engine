@@ -8,6 +8,7 @@ var exists = struct{}{}
 
 type Site struct {
 	SiteId     uint64    `json:"site_id"`
+	Lang       string    `json:"lang"`
 	Title      string    `json:"title"`
 	Link       string    `json:"link"`
 	PageRank   uint64    `json:"page_rank"`

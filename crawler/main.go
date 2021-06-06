@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocolly/colly"
 	"github.com/joho/godotenv"
@@ -106,23 +105,35 @@ func visitLink(lst chan<- Site, mainLink string,
 	})
 
 	collector.OnHTML("p", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
 	})
 
 	collector.OnHTML("div", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
 	})
 
 	collector.OnHTML("li", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
 	})
 
 	collector.OnHTML("article", func(element *colly.HTMLElement) {
-		mum[element.Name] = append(mum[element.Name], element.Text)
-		site.Link = strings.TrimSpace((element.Request).URL.String())
+		if len(element.Text) > 1 {
+			content := strings.Join(strings.Fields(element.Text), " ")
+			mum[element.Name] = append(mum[element.Name], content)
+			site.Link = strings.TrimSpace((element.Request).URL.String())
+		}
 	})
 
 	collector.OnHTML("head", func(element *colly.HTMLElement) {
@@ -195,7 +206,10 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	if strings.Contains(domain, "uk-ua.") ||
 		strings.Contains(domain, "?lang=uk") || strings.Contains(domain, "/uk/") {
-		pageLang = "uk"
+		pageLang = "ukr"
+	} else if strings.Contains(domain, "ru-ru.") || strings.Contains(domain, "https://ru.") ||
+		strings.Contains(domain, "?lang=ru") || strings.Contains(domain, "/ru/") {
+		pageLang = "ru"
 	}
 
 	visited.addLink(&mainLink)
@@ -204,16 +218,26 @@ func visitLink(lst chan<- Site, mainLink string,
 	// TODO: reminder that numInternalPage != num pages saved in database
 	atomic.AddUint64(numInternalPage, 1)
 
-	site.Content = strings.TrimSpace(strings.Join(mum["p"], " \n ") +
-		strings.Join(mum["li"], " \n ") + strings.Join(mum["div"], " \n ") +
-		strings.Join(mum["article"], " \n "))
+	site.Content = strings.TrimSpace(strings.Join(mum["p"], "\n") +
+		strings.Join(mum["li"], "\n") + strings.Join(mum["div"], "\n") +
+		strings.Join(mum["article"], "\n"))
 
-	if pageLang != "uk" && !checkLang(&site.Content, &site.Title, "Ukrainian") {
-		fmt.Println("Site does not have ukrainian translation ", mainLink)
-		return
-	} else {
-		fmt.Println("Ukrainian website ", mainLink)
+	if pageLang != "ukr" && pageLang != "ru" {
+		siteLang := checkLang(&site.Content, &site.Title)
+		if siteLang == "Ukrainian" {
+			pageLang = "ukr"
+		} else if siteLang == "Russian" {
+			pageLang = "ru"
+		}
 	}
+
+	if pageLang != "ukr" && pageLang != "ru" {
+		standardLogger.Println("Site does not have ukr and ru translations ", mainLink)
+		return
+	}
+
+	standardLogger.Println("Website supports needed languages -- ", pageLang, " ", mainLink)
+	site.Lang = pageLang
 
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
@@ -261,7 +285,7 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 
 			endDomainPos = findNthSymbol(&link[0], "/", 3)
 			if endDomainPos != -1 {
-				domain = domain[: endDomainPos]
+				domain = domain[:endDomainPos]
 			}
 
 			visited := newSafeSetOfLinks()
@@ -288,7 +312,7 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 	}
 }
 
-func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, links *[][2]string,
+func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	numberOfWorkers int, numberOfJobs int, lenLinks int) uint64 {
 
 	var wg sync.WaitGroup
@@ -320,7 +344,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 
 				packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE"))
 				if len(sliceSites.actualSites) >= packageSize {
-					elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
+					elasticInsert(esClient, &sliceSites.actualSites, 0)
 				}
 
 			case <-finishElasticInsert:
@@ -333,7 +357,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, insertIdxName string, lin
 		standardLogger.Println("len(sites) -- ", len(sites))
 
 		if len(sliceSites.actualSites) != 0 {
-			elasticInsert(esClient, &sliceSites.actualSites, &insertIdxName, 0)
+			elasticInsert(esClient, &sliceSites.actualSites,0)
 		}
 
 		defer wg.Done()
@@ -407,9 +431,11 @@ func main() {
 	// ================== elastic connection ==================
 	esClient := elasticConnect()
 
-	insertIdxName := os.Getenv("INDEX_ELASTIC_COLLECTED_DATA")
+	insertUkrIdxName := os.Getenv("INDEX_ELASTIC_UKR_COLLECTED_DATA")
+	insertRuIdxName := os.Getenv("INDEX_ELASTIC_RU_COLLECTED_DATA")
 	titleStr := "start index"
-	setIndexFirstId(esClient, insertIdxName, titleStr)
+	setIndexFirstId(esClient, insertUkrIdxName, titleStr, "ukr")
+	setIndexFirstId(esClient, insertRuIdxName, titleStr, "ru")
 	// end elastic connection
 
 	// ================== set last site id in Task Manager ==================
@@ -451,7 +477,6 @@ func main() {
 
 			Block{
 				Try: func() {
-					standardLogger.Println("res.Links[0][0]", res.Links[0][0])
 					if res.Links[0][0] == "links ended" {
 						endedIdxLinksCounter++
 						continueFlag = true
@@ -489,7 +514,7 @@ func main() {
 
 			// ------ end getting links from TaskManager
 
-			totalNumAddedPages += crawlLinksPackage(esClient, insertIdxName, &links,
+			totalNumAddedPages += crawlLinksPackage(esClient, &links,
 				numberOfWorkers, numberOfJobs, len(links))
 
 			standardLogger.Println("Iteration  ", iteration, ", after this iteration totalNumAddedPages -- ", totalNumAddedPages)

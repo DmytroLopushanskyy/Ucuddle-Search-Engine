@@ -89,7 +89,7 @@ def set_parsed_link_id():
 @app.route('/task_manager/api/v1.0/set_last_site_id', methods=['POST'])
 def set_last_site_id():
     if task_manager.last_id_in_index_sites == -1:
-        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_index()
+        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_all_indexes()
 
     return "last_site_id was set up", 200
 
@@ -99,7 +99,7 @@ def get_last_site_id():
     last_id = task_manager.last_id_in_index_sites
 
     if last_id == -1:
-        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_index()
+        task_manager.last_id_in_index_sites = task_manager.get_last_site_id_in_all_indexes()
         last_id = task_manager.last_id_in_index_sites
 
     task_manager.last_id_in_index_sites += PACKAGE_SIZE

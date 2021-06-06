@@ -109,7 +109,7 @@ func findNthSymbol(content *string, symbol string, nOccurrences int) int {
 	return startPos - 1
 }
 
-func checkLang(pTagText *string, siteTitle *string, compareLang string) bool {
+func checkLang(pTagText *string, siteTitle *string) string {
 	var content string
 	enoughLenChunk := 2000
 	lenText := len(*pTagText)
@@ -138,10 +138,11 @@ func checkLang(pTagText *string, siteTitle *string, compareLang string) bool {
 	textChunk = strings.Join(strings.Fields(textChunk), " ")
 	chunkLang := whatlanggo.DetectLang(textChunk)
 
-	if whatlanggo.Langs[chunkLang] == compareLang {
-		return true
-	}
-	return false
+	//if whatlanggo.Langs[chunkLang] == compareLang {
+	//	return true
+	//}
+	//return false
+	return whatlanggo.Langs[chunkLang]
 }
 
 func checkMainPageLang(domain string, mainLink *string, visited *SafeSetOfLinks, pageLang *string,
@@ -157,7 +158,7 @@ func checkMainPageLang(domain string, mainLink *string, visited *SafeSetOfLinks,
 			strings.Join((*mum)["li"], " \n ") + strings.Join((*mum)["div"], " \n ") +
 			strings.Join((*mum)["article"], " \n "))
 
-		if checkLang(&(*site).Content, &site.Title, "Ukrainian") {
+		if checkLang(&(*site).Content, &site.Title) == "Ukrainian" {
 			*pageLang = "uk"
 			*mainLink = newLink
 			fmt.Println("checkMainPageLang() Language is Ukrainian", *mainLink)

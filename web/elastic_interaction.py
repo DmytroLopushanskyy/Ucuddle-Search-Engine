@@ -43,7 +43,7 @@ def elastic_search(search_line):
     for i in range(3):
         time.sleep(waiting_response_time)
         res = es.search(
-            index=os.environ['INDEX_ELASTIC_COLLECTED_DATA'],
+            index=os.environ['INDEX_ELASTIC_UKR_COLLECTED_DATA'],
             body=jsonpickle.encode(query, unpicklable=False)
         )
 

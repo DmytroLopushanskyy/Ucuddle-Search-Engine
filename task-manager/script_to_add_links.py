@@ -60,7 +60,7 @@ if __name__ == '__main__':
         step = 25
 
         indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
-        for i in range(2):
+        for i in range(1):
             url = os.environ["TASK_MANAGER_URL"] + os.environ["TASK_MANAGER_ENDPOINT_ADD_LINKS"]
             response = requests.post(url, json={
                 "links_index_name": indexes_names[i],

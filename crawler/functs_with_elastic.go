@@ -62,7 +62,7 @@ func elasticConnect() *elasticsearch.Client {
 	return es
 }
 
-func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
+func setIndexUkrAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	var buf bytes.Buffer
 
 	lang := "ukrainian"
@@ -109,11 +109,89 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 		es.Indices.Create.WithBody(&buf),
 	)
 
-	standardLogger.Println("\nsetIndexAnalyzer")
+	standardLogger.Println("\nsetIndexUkrAnalyzer")
 	fmt.Println(res)
 
 	if res.Status() != "200 OK" { // SKIP
-		fmt.Println("ERROR in setIndexAnalyzer():")
+		fmt.Println("ERROR in setIndexUkrAnalyzer():")
+		fmt.Println(res, err)
+		os.Exit(3)
+	}
+
+	defer res.Body.Close()
+}
+
+func setIndexRuAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
+	var buf bytes.Buffer
+
+	lang := "russian"
+	query := map[string]interface{}{
+		"settings": map[string]interface{}{
+			"analysis": map[string]interface{}{
+				"filter": map[string]interface{}{
+					"russian_stop": map[string]interface{}{
+						"type":       "stop",
+						"stopwords":  "_russian_",
+					},
+					"russian_stemmer": map[string]interface{}{
+						"type":       "stemmer",
+						"language":   lang,
+					},
+				},
+				"analyzer": map[string]interface{}{
+					"rebuilt_russian": map[string]interface{}{
+						"tokenizer":  "standard",
+						"filter": []string{
+							"lowercase",
+							"russian_stop",
+							"russian_stemmer",
+						},
+					},
+				},
+			},
+		},
+		"mappings": map[string]interface{}{
+			"properties": map[string]interface{}{
+				"site_id": map[string]interface{}{
+					"type": "unsigned_long",
+				},
+				"title": map[string]interface{}{
+					"type":                  "text",
+					"analyzer":              lang,
+					"search_analyzer":       lang,
+					"search_quote_analyzer": lang,
+				},
+				"content": map[string]interface{}{
+					"type":                  "text",
+					"analyzer":              lang,
+					"search_analyzer":       lang,
+					"search_quote_analyzer": lang,
+				},
+				"link": map[string]interface{}{
+					"type": "text",
+				},
+				"added_at_time": map[string]interface{}{
+					"type": "date_nanos",
+				},
+			},
+		},
+	}
+
+	if err := json.NewEncoder(&buf).Encode(query); err != nil {
+		standardLogger.Fatalf("Error encoding query: %s", err)
+	}
+
+	var res *esapi.Response
+	res, err := es.Indices.Create(
+		saveStrIdx,
+		es.Indices.Create.WithBody(&buf),
+	)
+
+	standardLogger.Println("\nsetIndexUkrAnalyzer")
+	fmt.Println(res)
+
+	if res.Status() != "200 OK" { // SKIP
+		fmt.Println("ERROR in setIndexUkrAnalyzer():")
 		fmt.Println(res, err)
 		os.Exit(3)
 	}
@@ -122,7 +200,7 @@ func setIndexAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 }
 
 func setIndexFirstId(es *elasticsearch.Client, idxName string,
-	titleStr string) {
+	titleStr string, lang string) {
 	var dataArr []Site
 
 	res, err := es.Indices.Get([]string{idxName})
@@ -139,22 +217,26 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 			Link:  "https:",
 		}
 
-		dataArr = append(dataArr, site)
-
 		if os.Getenv("DEBUG") == "true" {
 			fmt.Printf("%v", dataArr)
 		}
 
-		setIndexAnalyzer(es, idxName)
-		elasticInsert(es, &dataArr, &idxName, 1)
+		if lang == "ukr" {
+			site.Lang = "ukr"
+			setIndexUkrAnalyzer(es, idxName)
+		} else if lang == "ru" {
+			site.Lang = "ru"
+			setIndexRuAnalyzer(es, idxName)
+		}
+		dataArr = append(dataArr, site)
+
+		elasticInsert(es, &dataArr, 1)
 	} else {
 		fmt.Println("\n\n ========== Index already exists")
 	}
 }
 
-func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string,
-	externalLastId uint64) {
-
+func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, externalLastId uint64) {
 	var (
 		wg sync.WaitGroup
 	)
@@ -170,10 +252,11 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 		waitResponseTime := 0
 		for i := 0; i < 5; i++ {
 			time.Sleep(time.Duration(waitResponseTime) * time.Second)
-			resp, err = http.Get(os.Getenv("TASK_MANAGER_URL") + os.Getenv("TASK_MANAGER_ENDPOINT_GET_LAST_SITE_ID"))
+			resp, err = http.Get(os.Getenv("TASK_MANAGER_URL") +
+				os.Getenv("TASK_MANAGER_ENDPOINT_GET_LAST_SITE_ID"))
 
 			if err != nil {
-				standardLogger.Error("getting response to TASK_MANAGER_ENDPOINT_GET_LAST_SITE_ID (iteration ",
+				standardLogger.Error("getting response from TASK_MANAGER_ENDPOINT_GET_LAST_SITE_ID (iteration ",
 					i+1, "): ", err)
 			} else {
 				break
@@ -202,6 +285,10 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 	}
 	standardLogger.Debug("curIndexLastId -- ", curIndexLastId)
 
+	mapInsertIdxName := make(map[string]string)
+	mapInsertIdxName["ukr"] = os.Getenv("INDEX_ELASTIC_UKR_COLLECTED_DATA")
+	mapInsertIdxName["ru"] = os.Getenv("INDEX_ELASTIC_RU_COLLECTED_DATA")
+
 	// Index documents concurrently
 	//
 	for i, site := range *dataArr {
@@ -223,7 +310,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string
 
 			// Set up the request object.
 			req := esapi.IndexRequest{
-				Index:      *saveStrIdx,
+				Index:      mapInsertIdxName[site2.Lang],
 				DocumentID: strconv.FormatUint(site2.SiteId, 10),
 				Body:       strings.NewReader(string(res2B)),
 				Refresh:    "true",
@@ -329,7 +416,6 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 			es.Search.WithIndex(searchStrIdx),
 			es.Search.WithBody(queryBuf),
 			es.Search.WithTrackTotalHits(true),
-			es.Search.WithPretty(),
 		)
 
 		if err != nil {
