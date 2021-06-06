@@ -71,6 +71,9 @@ func setIndexUkrAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 			"analysis": map[string]interface{}{
 				"analyzer": lang,
 			},
+			"index": map[string]interface{}{
+				"number_of_shards": 3,
+			},
 		},
 		"mappings": map[string]interface{}{
 			"properties": map[string]interface{}{
@@ -127,6 +130,9 @@ func setIndexRuAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	lang := "russian"
 	query := map[string]interface{}{
 		"settings": map[string]interface{}{
+			"index": map[string]interface{}{
+				"number_of_shards": 3,
+			},
 			"analysis": map[string]interface{}{
 				"filter": map[string]interface{}{
 					"russian_stop": map[string]interface{}{
