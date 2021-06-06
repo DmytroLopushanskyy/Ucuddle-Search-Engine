@@ -12,7 +12,7 @@ app.secret_key = config.FLASK_KEY
 app.config['SECRET_KEY'] = config.SECRET_KEY
 task_manager = TaskManager()
 
-PACKAGE_SIZE = int(os.environ["NUM_SITES_IN_PACKAGE"])
+PACKAGE_SIZE = int(os.environ["NUM_SITES_IN_PACKAGE_SAVE_INDEX"])
 
 
 # TODO: test it
@@ -56,6 +56,11 @@ def get_links():
     links = task_manager.retrieve_links(os.environ["NUM_LINKS_PER_CRAWLER"], False)
     if len(links["links"]) == 0:
         links["links"] = [["links ended", "-1"]]
+
+        indexes_elastic_links = os.environ["INDEXES_ELASTIC_LINKS"].split()
+        if config.POS_ELASTIC_INDEX_LINKS < len(indexes_elastic_links) - 1:
+            config.POS_ELASTIC_INDEX_LINKS += 1
+            task_manager.index_elastic_links = indexes_elastic_links[config.POS_ELASTIC_INDEX_LINKS]
 
     return jsonify(links), 200
 

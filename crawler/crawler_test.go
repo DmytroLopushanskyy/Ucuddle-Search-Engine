@@ -79,7 +79,8 @@ import (
 //	"https://en.wikipedia.org/wiki/%D0%93%D0%BE%D0%BB%D0%BE%D0%B2%D0%BD%D0%B0_%D1%81%D1%82%D0%BE%D1%80%D1%96%D0%BD%D0%BA%D0%B0",
 //)
 
-// ================= Should NOT find sites ================= .....
+// ================= Web testing =================
+// - какая культура в Дании
 
 // EqualArrays tells whether a and b contain the same elements.
 // A nil argument is equivalent to an empty slice.
@@ -288,7 +289,7 @@ func TestCheckLang(t *testing.T) {
 				strings.Join(mum["li"], " \n ") + strings.Join(mum["div"], " \n ") +
 				strings.Join(mum["article"], " \n "))
 
-			if checkLang(&site.Content, &site.Title, "Ukrainian") {
+			if checkLang(&site.Content, &site.Title) == "Ukrainian" {
 				mainLink = newLink
 				pageLang = "ukrainian"
 				fmt.Println("checkMainPageLang() Language is Ukrainian ", mainLink)

@@ -70,7 +70,7 @@ func visitLink(lst chan<- Site, mainLink string,
 
 	var MaxInternalPages uint64
 	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
-	if *numInternalPage >= MaxInternalPages {
+	if *numInternalPage > MaxInternalPages {
 		return
 	}
 
@@ -324,6 +324,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	finishElasticInsert := make(chan bool)
 
 	allParsedLinks := newSafeSetOfLinks()
+	packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE_SAVE_INDEX"))
 
 	var numAddedPages uint64
 	go func(finishElasticInsert chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
@@ -342,7 +343,6 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 					atomic.AddUint64(numAddedPages, 1)
 				}
 
-				packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE"))
 				if len(sliceSites.actualSites) >= packageSize {
 					elasticInsert(esClient, &sliceSites.actualSites, 0)
 				}
@@ -353,8 +353,6 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 				}
 			}
 		}
-
-		standardLogger.Println("len(sites) -- ", len(sites))
 
 		if len(sliceSites.actualSites) != 0 {
 			elasticInsert(esClient, &sliceSites.actualSites,0)
@@ -389,7 +387,6 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
 	}
-	standardLogger.Println("at the end of code len(done) -- ", len(done))
 
 	close(killSignal)
 	close(finishElasticInsert)
@@ -418,8 +415,8 @@ func main() {
 	startCode := time.Now()
 
 	// load .env file
-	err := godotenv.Load(path.Join("shared_vars.env"))
-	//err := godotenv.Load(path.Join("..", "shared_vars.env"))
+	//err := godotenv.Load(path.Join("shared_vars.env"))
+	err := godotenv.Load(path.Join("..", "shared_vars.env"))
 
 	if err != nil {
 		standardLogger.Fatal("Error loading .env file")
@@ -448,6 +445,7 @@ func main() {
 
 	var totalNumAddedPages uint64
 	var continueFlag bool
+	var iterationNumAddedPages uint64
 	iteration := 0
 	indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
 
@@ -466,9 +464,6 @@ func main() {
 				getDomainsToParse(&res, false)
 				standardLogger.Println("get domains taken: false, parsed: false")
 			} else if endedIdxLinksCounter == 1 {
-				getDomainsToParse(&res, true)
-				standardLogger.Println("get domains taken: true, parsed: false")
-			} else {
 				standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
 				break
 			}
@@ -514,14 +509,18 @@ func main() {
 
 			// ------ end getting links from TaskManager
 
-			totalNumAddedPages += crawlLinksPackage(esClient, &links,
+			iterationNumAddedPages = crawlLinksPackage(esClient, &links,
 				numberOfWorkers, numberOfJobs, len(links))
 
-			standardLogger.Println("Iteration  ", iteration, ", after this iteration totalNumAddedPages -- ", totalNumAddedPages)
+			totalNumAddedPages += iterationNumAddedPages
+
+			standardLogger.Println("Iteration  ", iteration, ", after this iteration iterationNumAddedPages -- ",
+				iterationNumAddedPages, "\ntotalNumAddedPages -- ", totalNumAddedPages)
 			finishedCode := time.Now()
+			iterationTime := finishedCode.Sub(startCode)
 
 			standardLogger.Println("Iteration  ", iteration,
-				", total work time after this iteration -- ", finishedCode.Sub(startCode), "\n\n ")
+				", total work time after this iteration -- ", iterationTime, "\n\n ")
 		}
 	}
 

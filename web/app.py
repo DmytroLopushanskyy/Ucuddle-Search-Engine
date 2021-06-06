@@ -4,6 +4,7 @@ Main module
 from flask import Flask, render_template, request, jsonify
 
 import config
+from langdetect import detect
 from elastic_interaction import elastic_search
 
 app = Flask(__name__)
@@ -25,8 +26,9 @@ def search():
     Search page
     """
     query = request.args.get('query')
+    lang = detect(query)
 
-    websites = elastic_search(query)
+    websites = elastic_search(query, lang)
     data = {
         "query": query,
         "websites": websites

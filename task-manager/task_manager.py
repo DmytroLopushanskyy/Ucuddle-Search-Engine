@@ -108,6 +108,8 @@ class TaskManager:
             )
 
             last_link_id += 1
+            if last_link_id % 100 == 0:
+                print("Currently added last_link_id -- ", last_link_id)
 
         print("last_link_id after adding links -- ", last_link_id)
 
