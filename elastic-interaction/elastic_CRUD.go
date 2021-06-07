@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/go-elasticsearch"
-	"github.com/elastic/go-elasticsearch/esapi"
+	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"log"
 	"strconv"
 	"strings"
@@ -182,3 +182,11 @@ func deleting(es *elasticsearch.Client, deleteStrIdx string, id string) {
 	}
 }
 
+func deleteIndexes(es *elasticsearch.Client, indexNames []string) {
+	res, err := es.Indices.Delete(indexNames)
+	fmt.Println(res, err)
+	if err != nil { // SKIP
+		log.Fatalf("Error getting the response: %s", err) // SKIP
+	} // SKIP
+	defer res.Body.Close() // SKIP
+}

@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  web:
+    image: dmytrolopushanskyy/ucuddle-crawlers:task-manager
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - .flask-env
+    command: /usr/local/bin/gunicorn -w 2 -b :8000 app:app
+  nginx:
+    image: dmytrolopushanskyy/ucuddle-crawlers:nginx
+    restart: always
+    ports:
+      - "80:80"
+    links:
+      - web:web
+    depends_on:
+      - web

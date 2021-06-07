@@ -1,6 +1,6 @@
 ---
 - name: Install Docker and Docker Compose on VMs
-  hosts: all
+  hosts: crawlers
   become: true
 
   tasks:
@@ -53,3 +53,27 @@
       when:
         - docker_compose_check.msg is defined
         - docker_compose_check.msg.find('No such file or directory') != -1
+
+    - name: Install docker and docker-compose with python3
+      hosts: crawlers
+      become: true
+
+    - name: Install python 3.6 and pip3
+      yum:
+        name:
+          - python36
+          - libselinux-python3
+        state: present
+
+- name: Install docker and docker-compose
+  hosts: crawlers
+  become: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Install docker and docker-compose
+      pip:
+        name: ['setuptools', 'setuptools_rust', 'docker', 'docker-compose']
+        executable: pip3
+        state: latest

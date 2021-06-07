@@ -1,26 +1,32 @@
 from datetime import datetime
 import os
-import logging
 
 import jsonpickle
 from elasticsearch import Elasticsearch
+from logger import get_logger
 
 
-class TaskManager:
+class _TaskManager:
+    _instance = None
+
     def __init__(self):
+        self.logger = get_logger()
+        self.logger.log("Initialize TaskManager")
         self.es_client = Elasticsearch([os.environ['ELASTICSEARCH_URL']],
                             http_auth=(os.environ['USERNAME'], os.environ['PASSWORD']))
+
+        self.logger.log("Connection opened in TaskManager init")
         # self.es_client = Elasticsearch()
 
     def create_new_index(self, index_name):
-        logging.debug("Creating new index")
+        self.logger.log("Creating new index")
         res = self.es_client.indices.create(index=index_name, ignore=400)
 
         if res.get('status', 0) != 0:
-            print("Error reason: ", res['error']['reason'])
+            self.logger.log("Error reason: ", res['error']['reason'])
             return res['status']
 
-        logging.debug("Elastic response for creating new index: ", res)
+        self.logger.log("Elastic response for creating new index ")
         return 200
 
     # def add_new_data_in_index(self, index_name, data):
@@ -40,12 +46,12 @@ class TaskManager:
                 }
             }
         }
+        self.logger.log("before elastic")
         res = self.es_client.search(
             index=os.environ['INDEX_ELASTIC_LINKS'],
             body=jsonpickle.encode(query, unpicklable=False)
         )
-
-        logging.debug("res", res)
+        self.logger.log("elastic res")
         links = dict()
         links["links"] = []
         for hit in res["hits"]["hits"]:
@@ -63,7 +69,13 @@ class TaskManager:
                 body={"link": link, "added_at_time": datetime.now()}
             )
 
-            print("es_client insert link response -- ", res["result"])
+            self.logger.log("es_client insert link response")
             last_link_id += 1
 
-        print("All links were successfully added !!!")
+        self.logger.log("All links were successfully added !!!")
+
+
+def get_task_manager_singleton():
+    if _TaskManager._instance is None:
+        _TaskManager._instance = _TaskManager()
+    return _TaskManager._instance

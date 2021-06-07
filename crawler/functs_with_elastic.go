@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/tidwall/gjson"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -20,6 +21,7 @@ type Site struct {
 	SiteId     uint64    `json:"site_id"`
 	Title      string    `json:"title"`
 	Link       string    `json:"link"`
+	PageRank   uint64    `json:"page_rank"`
 	Content    string    `json:"content"`
 	Hyperlinks []string  `json:"hyperlinks"`
 	AddedAt    time.Time `json:"added_at_time"`
@@ -149,18 +151,18 @@ func setIndexFirstId(es *elasticsearch.Client, idxName string,
 		dataArr = append(dataArr, site)
 
 		if os.Getenv("DEBUG") == "true" {
-			fmt.Printf("%v", dataArr)}
-
+			fmt.Printf("%v", dataArr)
+		}
 
 		// TODO: exist
 		setIndexAnalyzer(es, idxName)
-		elasticInsert(es, dataArr, &idxName, &indexLastIdInt)
+		elasticInsert(es, &dataArr, &idxName, &indexLastIdInt)
 	} else {
 		fmt.Println("\n\n ========== Index already exists")
 	}
 }
 
-func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
+func elasticInsert(es *elasticsearch.Client, dataArr *[]Site, saveStrIdx *string,
 	indexLastId *uint64) {
 	fmt.Println("\n elasticInsert start")
 	var (
@@ -169,7 +171,7 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 
 	// Index documents concurrently
 	//
-	for i, site := range dataArr {
+	for i, site := range *dataArr {
 		wg.Add(1)
 
 		go func(i int, site2 Site) {
@@ -192,7 +194,26 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 			}
 
 			// Perform the request with the client.
-			res, err := req.Do(context.Background(), es)
+			var res *esapi.Response
+			var err error
+
+			waitResponseTime := 0
+			for i := 0; i < 5; i++ {
+				time.Sleep(time.Duration(waitResponseTime) * time.Second)
+
+				//if i == 2 {
+				res, err = req.Do(context.Background(), es)
+				//} else {
+				//	err = errors.New("test error")
+				//}
+
+				if err != nil {
+					fmt.Println("elasticInsert(): Error getting response (iteration ", i+1, "): ", err)
+				} else {
+					break
+				}
+				waitResponseTime = int(math.Exp(float64(i + 1)))
+			}
 
 			if err != nil {
 				log.Fatalf("Error getting response: %s", err)
@@ -203,12 +224,12 @@ func elasticInsert(es *elasticsearch.Client, dataArr []Site, saveStrIdx *string,
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
 			}
 		}(i, site)
-		//
-		//fmt.Println(site.Title, " inserted")
+
+		fmt.Println(site.Title, " inserted")
 	}
 	wg.Wait()
 
-	dataArr = dataArr[:0]
+	*dataArr = (*dataArr)[:0]
 	log.Println(strings.Repeat("-", 37))
 }
 
@@ -222,7 +243,7 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 			"match_all": map[string]interface{}{},
 		},
 
-		//"size": 1,
+		"size": 1,
 
 		"sort": map[string]interface{}{
 			"site_id": map[string]interface{}{
@@ -256,13 +277,28 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	//
 
 	// Perform the search request.
-	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
-		es.Search.WithIndex(searchStrIdx),
-		es.Search.WithBody(queryBuf),
-		es.Search.WithTrackTotalHits(true),
-		es.Search.WithPretty(),
-	)
+	var res *esapi.Response
+	var err error
+
+	waitResponseTime := 0
+
+	for i := 0; i < 5; i++ {
+		time.Sleep(time.Duration(waitResponseTime) * time.Second)
+		res, err = es.Search(
+			es.Search.WithContext(context.Background()),
+			es.Search.WithIndex(searchStrIdx),
+			es.Search.WithBody(queryBuf),
+			es.Search.WithTrackTotalHits(true),
+			es.Search.WithPretty(),
+		)
+
+		if err != nil {
+			fmt.Println("searchQuery(): Error getting response (iteration ", i+1, "): ", err)
+		} else {
+			break
+		}
+		waitResponseTime = int(math.Exp(float64(i + 1)))
+	}
 
 	if err != nil {
 		log.Fatalf("Error getting response: %s", err)

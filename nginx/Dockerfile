@@ -1,5 +1,7 @@
-FROM tutum/nginx
+FROM nginx:alpine
 
-RUN rm /etc/nginx/sites-enabled/default
+# Change nginx configuration
+COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 
-COPY sites-enabled/ /etc/nginx/sites-enabled
+# Copy static files
+COPY ./web/static /static

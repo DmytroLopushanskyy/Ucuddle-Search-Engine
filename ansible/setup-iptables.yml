@@ -1,0 +1,19 @@
+---
+# TODO: disable firewalld
+
+- hosts: task-manager
+  become: yes
+  gather_facts: no
+  vars:
+    iptables_docker_managed: true
+    ansible_distribution: 'CentOS'
+    ansible_os_family: 'CentOS'
+    iptables_docker_swarm_ports_allow_tcp:
+      - 80  # web
+      - 8000
+    iptables_docker_global_ports_allow_tcp:
+      - 22  # SSH
+      - 80  # web
+      - 2812  # monit
+  roles:
+    - ryandaniels.iptables_docker

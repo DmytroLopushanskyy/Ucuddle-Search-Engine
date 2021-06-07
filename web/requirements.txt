@@ -1,4 +1,10 @@
-flask
+fastapi
 jsonpickle
 elasticsearch
+asyncio
 gunicorn
+uvloop
+aiofiles
+jinja2
+httptools
+uvicorn

@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  crawler:
+    image: dmytrolopushanskyy/ucuddle-crawlers:crawler
+    env_file:
+      - .crawlers-env

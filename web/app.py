@@ -1,47 +1,52 @@
 """
 Main module
 """
-from flask import Flask, render_template, request, jsonify
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
+import asyncio
 import config
 from elastic_interaction import elastic_search
 
-app = Flask(__name__)
-app.secret_key = config.FLASK_KEY
-app.config['SECRET_KEY'] = config.SECRET_KEY
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 
-@app.route('/', methods=['GET'])
-def index():
+@app.get('/', response_class=HTMLResponse)
+async def index(request: Request):
     """
     Home page
     """
-    return render_template('index.html')
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.route('/search', methods=['GET'])
-def search():
+@app.get('/search', response_class=HTMLResponse)
+async def search(request: Request, query: str = ""):
     """
     Search page
     """
-    query = request.args.get('query')
+    if not query:
+        return templates.TemplateResponse("index.html", {"request": request})
+    
+    print(query)
 
     websites = elastic_search(query)
+    print("websites", websites)
     data = {
         "query": query,
         "websites": websites
     }
-    return render_template('search.html', data=data)
+    return templates.TemplateResponse("search.html", {"request": request, "data": data})
 
 
-@app.route('/more_links', methods=['POST'])
-def more_links():
+@app.post('/more_links')
+async def more_links(start: int = 0, end: int = 0, search: str = ""):
     """
     Return more links
     """
-    start = request.json['start']
-    end = request.json['end']
-    search = request.json['search']
 
     websites = [
         {
@@ -75,8 +80,10 @@ def more_links():
             "description": "Якісний прогноз погоди по м. Львів від синоптиків Українського Гідрометцентру. Поточна погода - метеодані метеорологічних, аерологічних станцій, ..."
         }
     ]
-    return jsonify({'status': 'ok', 'websites': websites})
+    return {'status': 'ok', 'websites': websites}
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     import uvicorn
+#     uvicorn.run(app, host="0.0.0.0", port=9000)
+    # app.run(debug=True)fastapi
