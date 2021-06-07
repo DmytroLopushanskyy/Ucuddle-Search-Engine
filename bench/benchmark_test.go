@@ -426,11 +426,13 @@ func benchmarkCrawler(i int, b *testing.B) {
     }
 }
 
-func BenchmarkCrawler_20(b *testing.B)  { benchmarkCrawler(20, b) }
-func BenchmarkCrawler_40(b *testing.B)  { benchmarkCrawler(40, b) }
+func BenchmarkCrawler_50(b *testing.B)  { benchmarkCrawler(50, b) }
 func BenchmarkCrawler_60(b *testing.B)  { benchmarkCrawler(60, b) }
+func BenchmarkCrawler_70(b *testing.B)  { benchmarkCrawler(70, b) }
 func BenchmarkCrawler_80(b *testing.B)  { benchmarkCrawler(80, b) }
+func BenchmarkCrawler_90(b *testing.B)  { benchmarkCrawler(90, b) }
 func BenchmarkCrawler_100(b *testing.B)  { benchmarkCrawler(100, b) }
+func BenchmarkCrawler_110(b *testing.B)  { benchmarkCrawler(110, b) }
 
 func main(){
     main_crawl(2)

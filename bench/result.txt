@@ -2,10 +2,116 @@ goos: linux
 goarch: amd64
 pkg: root/bench
 cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
-BenchmarkCrawler_20-8    	       1	28900976293 ns/op
-BenchmarkCrawler_40-8    	       1	26101532862 ns/op
-BenchmarkCrawler_60-8    	       1	25669318454 ns/op
-BenchmarkCrawler_80-8    	       1	25656230345 ns/op
-BenchmarkCrawler_100-8   	       1	26631544402 ns/op
+BenchmarkCrawler_50-8    	       1	53743447743 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	53824603370 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	56071116928 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	55959860845 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	57197244582 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	58565514561 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	58817998055 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	59511249213 ns/op
+goos: linux
+goarch: amd64
+pkg: root/bench
+cpu: Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz
+BenchmarkCrawler_50-8    	       1	59934596562 ns/op
+BenchmarkCrawler_60-8    	       1	69102185785 ns/op
+BenchmarkCrawler_60-8    	       1	71061330885 ns/op
+BenchmarkCrawler_60-8    	       1	77879557151 ns/op
+BenchmarkCrawler_60-8    	       1	80515196336 ns/op
+BenchmarkCrawler_60-8    	       1	82664632227 ns/op
+BenchmarkCrawler_60-8    	       1	81269135586 ns/op
+BenchmarkCrawler_60-8    	       1	83698519061 ns/op
+BenchmarkCrawler_60-8    	       1	82987726090 ns/op
+BenchmarkCrawler_60-8    	       1	83903905085 ns/op
+BenchmarkCrawler_70-8    	       1	61046206804 ns/op
+BenchmarkCrawler_70-8    	       1	59941874044 ns/op
+BenchmarkCrawler_70-8    	       1	54154877730 ns/op
+BenchmarkCrawler_70-8    	       1	52135154814 ns/op
+BenchmarkCrawler_70-8    	       1	53501665565 ns/op
+BenchmarkCrawler_70-8    	       1	53605563242 ns/op
+BenchmarkCrawler_70-8    	       1	52162622743 ns/op
+BenchmarkCrawler_70-8    	       1	54770499494 ns/op
+BenchmarkCrawler_70-8    	       1	54667753543 ns/op
+BenchmarkCrawler_80-8    	       1	59963536704 ns/op
+BenchmarkCrawler_80-8    	       1	61975970595 ns/op
+BenchmarkCrawler_80-8    	       1	61884082069 ns/op
+BenchmarkCrawler_80-8    	       1	53213822218 ns/op
+BenchmarkCrawler_80-8    	       1	71913699487 ns/op
+BenchmarkCrawler_80-8    	       1	74633850913 ns/op
+BenchmarkCrawler_80-8    	       1	74463515760 ns/op
+BenchmarkCrawler_80-8    	       1	74757082633 ns/op
+BenchmarkCrawler_80-8    	       1	75516880818 ns/op
+BenchmarkCrawler_90-8    	       1	52121414437 ns/op
+BenchmarkCrawler_90-8    	       1	77166591481 ns/op
+BenchmarkCrawler_90-8    	       1	77052854724 ns/op
+BenchmarkCrawler_90-8    	       1	81059706703 ns/op
+BenchmarkCrawler_90-8    	       1	78022100114 ns/op
+BenchmarkCrawler_90-8    	       1	80804637022 ns/op
+BenchmarkCrawler_90-8    	       1	79769172999 ns/op
+BenchmarkCrawler_90-8    	       1	78194805738 ns/op
+BenchmarkCrawler_90-8    	       1	82001399637 ns/op
+BenchmarkCrawler_100-8   	       1	84973905126 ns/op
+BenchmarkCrawler_100-8   	       1	85877875556 ns/op
+BenchmarkCrawler_100-8   	       1	86974410337 ns/op
+BenchmarkCrawler_100-8   	       1	81871146939 ns/op
+BenchmarkCrawler_100-8   	       1	82925528714 ns/op
+BenchmarkCrawler_100-8   	       1	81116169669 ns/op
+BenchmarkCrawler_100-8   	       1	84249079968 ns/op
+BenchmarkCrawler_100-8   	       1	84061490352 ns/op
+BenchmarkCrawler_100-8   	       1	79918162135 ns/op
+BenchmarkCrawler_110-8   	       1	85764839253 ns/op
 PASS
-ok  	root/bench	132.980s
+ok  	root/bench	473.870s
+BenchmarkCrawler_110-8   	       1	84024611248 ns/op
+PASS
+ok  	root/bench	492.971s
+BenchmarkCrawler_110-8   	       1	86121799766 ns/op
+PASS
+ok  	root/bench	495.074s
+BenchmarkCrawler_110-8   	       1	82796062581 ns/op
+PASS
+ok  	root/bench	495.747s
+BenchmarkCrawler_110-8   	       1	78017204595 ns/op
+PASS
+ok  	root/bench	500.786s
+BenchmarkCrawler_110-8   	       1	74254524862 ns/op
+PASS
+ok  	root/bench	503.094s
+BenchmarkCrawler_110-8   	       1	71909378014 ns/op
+PASS
+ok  	root/bench	503.635s
+BenchmarkCrawler_110-8   	       1	73306873212 ns/op
+PASS
+ok  	root/bench	505.233s
+BenchmarkCrawler_110-8   	       1	69913464105 ns/op
+PASS
+ok  	root/bench	505.480s
