@@ -3,6 +3,7 @@ elastic-interaction/buf.go
 crawler/buf.go
 task-manager/buf.py
 ./helper_notes.txt
+./profile_logs.txt
 
 # important files
 *.env
