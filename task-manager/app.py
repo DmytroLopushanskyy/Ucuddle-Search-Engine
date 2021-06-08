@@ -53,8 +53,8 @@ def add_links():
 def get_links():
     check_elastic_search_status()
 
-    links = task_manager.retrieve_links(os.environ["NUM_LINKS_PER_CRAWLER"], False)
-    if len(links["links"]) == 0:
+    links, missed_hits = task_manager.retrieve_links(os.environ["NUM_LINKS_PER_CRAWLER"], False)
+    if missed_hits < 1 and len(links["links"]) == 0:
         links["links"] = [["links ended", "-1"]]
 
         indexes_elastic_links = os.environ["INDEXES_ELASTIC_LINKS"].split()
@@ -68,8 +68,8 @@ def get_links():
 @app.route('/task_manager/api/v1.0/get_failed_links', methods=['GET'])
 def get_failed_links():
     check_elastic_search_status()
-    links = task_manager.retrieve_links(os.environ["NUM_LINKS_PER_CRAWLER"], True)
-    if len(links["links"]) == 0:
+    links, missed_hits = task_manager.retrieve_links(os.environ["NUM_LINKS_PER_CRAWLER"], True)
+    if missed_hits < 1 and len(links["links"]) == 0:
         links["links"] = [["links ended", "-1"]]
 
         indexes_elastic_links = os.environ["INDEXES_ELASTIC_LINKS"].split()

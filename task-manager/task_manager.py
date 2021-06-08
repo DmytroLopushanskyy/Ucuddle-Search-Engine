@@ -79,15 +79,19 @@ class TaskManager:
 
             links = dict()
             links["links"] = []
+            missed_hits = 0
             for hit in res["hits"]["hits"]:
-                links["links"].append([hit["_source"]["link"], hit["_id"]])
-                self.set_parsed_link(hit["_id"], 0, True)
+                if self.set_parsed_link(hit["_id"], 0, True) == 0:
+                    links["links"].append([hit["_source"]["link"], hit["_id"]])
+                else:
+                    missed_hits += 1
 
-            return links
+            return links, missed_hits
 
-        except:
+        except Exception as e:
             print("retrieve_links(): search response is empty to ", self.index_elastic_links)
-            return {"links": []}
+            print("retrieve_links(): error --  ", e)
+            return {"links": []}, -1
 
     def add_new_links(self, links_index_name, links_lst):
         last_link_id = self.get_last_link_id()
@@ -154,14 +158,17 @@ class TaskManager:
                     "doc": {
                         body_key: body_value
                     }
-                }
+                },
+                request_timeout=150
             )
 
-            # logging.error("set_parsed_link() es_client.update invalid response")
             print("set_parsed_link() res -- ", res)
 
-            return 0
-        except:
+            if res['result'] == 'updated':
+                return 0
+            return -1
+        except Exception as e:
+            print("Exception in set_parsed_link() -- ", e)
             return -1
 
     def get_last_site_id_in_index(self, index_elastic_sites):
@@ -193,8 +200,9 @@ class TaskManager:
 
             try:
                 return res["hits"]["hits"][0]["_source"]["site_id"] + 1
-            except:
+            except Exception as e:
                 logging.error("set_parsed_link() es_client.update invalid response", res)
+                logging.error("set_parsed_link() error -- ", e)
 
             waiting_response_time = math.exp(i + 1)
 

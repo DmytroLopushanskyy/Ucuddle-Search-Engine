@@ -30,8 +30,12 @@ def update_config_index():
             os.environ["LAST_LINK_ID_KEY_ELASTIC"]: last_link_id
         }
 
-        resp = es_client.create(index=os.environ["INDEX_CONFIG_ELASTIC"], id=0,
-                                body=body_dict)
+        resp = es_client.create(
+            index=os.environ["INDEX_CONFIG_ELASTIC"],
+            id=0,
+            body=body_dict,
+            request_timeout=100
+        )
 
     print("update_config_index resp -- ", resp)
 
@@ -42,7 +46,7 @@ if __name__ == '__main__':
     if answer.lower() == "yes":
         update_config_index()
 
-    with open(os.path.join("..", "files", "ua_domains_10000.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join("..", "files", "ukr_domains.json"), "r", encoding="utf-8") as f:
         dict_links = json.load(f)
 
     options = ["Create new indexes and fill them with links OR append to the first index_name in INDEXES_ELASTIC_LINKS",

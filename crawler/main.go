@@ -420,7 +420,7 @@ func main() {
 	}
 
 	// ================== setup configuration ==================
-	numberOfWorkers := 8
+	numberOfWorkers := 20
 
 	// ================== elastic connection ==================
 	esClient := elasticConnect()
@@ -444,17 +444,16 @@ func main() {
 	var continueFlag bool
 	var iterationNumAddedPages uint64
 	iteration := 0
+	totalNumDomains := 0
 	indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
 
 	for j := 0; j < len(indexesElasticLinks); j++ {
 		endedIdxLinksCounter := 0
 
 		for true {
-			iteration++
-
 			standardLogger.Println("Start getDomainsToParse global iteration ", iteration)
 
-			//// ================== get links from TaskManager ==================
+			// ================== get links from TaskManager ==================
 			res := responseLinks{}
 
 			if endedIdxLinksCounter == 0 {
@@ -464,6 +463,8 @@ func main() {
 				standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
 				break
 			}
+
+			iteration++
 
 			continueFlag = false
 
@@ -497,9 +498,13 @@ func main() {
 				numberOfWorkers, numberOfJobs, len(links))
 
 			totalNumAddedPages += iterationNumAddedPages
+			totalNumDomains += len(links)
 
-			standardLogger.Println("Iteration  ", iteration, ", after this iteration iterationNumAddedPages -- ",
-				iterationNumAddedPages, "\ntotalNumAddedPages -- ", totalNumAddedPages)
+			standardLogger.Println("Iteration  ", iteration, ", after this iteration ",
+				"iterationNumAddedPages -- ",  iterationNumAddedPages, ", num_taken_domains -- ", len(links),
+				"\ntotalNumDomains -- ", totalNumDomains,
+				"\ntotalNumAddedPages -- ", totalNumAddedPages,
+			)
 			finishedCode := time.Now()
 			iterationTime := finishedCode.Sub(startCode)
 
