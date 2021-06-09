@@ -18,6 +18,7 @@ async def elastic_search(search_line, lang):
     post_tag = "*-*-*"
     query = {
         # "profile": True,
+        "size": 20,
         "query": {
             "bool": {
                 "must": {
