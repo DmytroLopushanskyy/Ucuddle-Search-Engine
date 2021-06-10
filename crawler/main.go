@@ -466,7 +466,6 @@ func main() {
 				}
 
 				iteration++
-
 				continueFlag = false
 
 				Block{

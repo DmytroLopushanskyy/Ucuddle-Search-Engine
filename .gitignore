@@ -4,6 +4,7 @@ crawler/buf.go
 task-manager/buf.py
 helper_notes.txt
 profile_logs.txt
+web/buf.py
 
 # important files
 *.env

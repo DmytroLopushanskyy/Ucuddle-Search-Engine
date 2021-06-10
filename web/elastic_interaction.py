@@ -79,9 +79,12 @@ async def elastic_search(search_line, lang):
                 print("Got %d Hits:" % res['hits']['total']['value'])
                 for hit in res['hits']['hits']:
                     if hit["_source"]["link"] not in filter_duplicates:
+                        website = dict()
+
                         print('hit["_source"]["title"]', hit["_source"]["title"])
                         print('hit["_score"]', hit["_score"])
-                        hit["_source"]["title"] = hit["_source"]["title"][0].upper() + hit["_source"]["title"][1:]
+                        website["title"] = hit["_source"]["title"][0].upper() + hit["_source"]["title"][1:]
+                        website["link"] = hit["_source"]["link"]
 
                         # set up bold for highlight
                         try:
@@ -90,12 +93,12 @@ async def elastic_search(search_line, lang):
                             hit["_source"]["highlight"] = soup.get_text()
                             hit["_source"]["highlight"] = hit["_source"]["highlight"].replace(pre_tag, "<b>")
                             hit["_source"]["highlight"] = hit["_source"]["highlight"].replace(post_tag, "</b>")
-                            hit["_source"]["highlight"] = Markup(hit["_source"]["highlight"])
+                            website["highlight"] = Markup(hit["_source"]["highlight"])
                         except Exception as e:
                             print("elastic_search(): Error with highlight -- ", e)
-                            hit["_source"]["highlight"] = "..."
+                            website["highlight"] = "..."
 
-                        hits_list.append(hit["_source"])
+                        hits_list.append(website)
                         filter_duplicates.add(hit["_source"]["link"])
 
                 # pprint(res)
