@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// redundant function
 func writeSliceJSON(data []Site, writefile string) {
 	file, err := json.MarshalIndent(data, "", " ")
 	if err != nil {
@@ -28,6 +29,7 @@ func writeSliceJSON(data []Site, writefile string) {
 	_ = ioutil.WriteFile(writefile, file, 0644)
 }
 
+// redundant function
 func writeChannelJSON(data <-chan Site, writefile string) {
 
 	allSites := make([]Site, 0)
@@ -47,6 +49,7 @@ func writeChannelJSON(data <-chan Site, writefile string) {
 
 }
 
+// redundant function
 func readLines(path string) ([]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -62,10 +65,12 @@ func readLines(path string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
+// function for visiting a single link
 func visitLink(lst chan<- Site, mainLink string,
 	visited *SafeSetOfLinks, id int, numInternalPage *uint64,
 	domain string) (failed error) {
 
+	// setting limit to the max number of pages of domain to crawl
 	var MaxInternalPages uint64
 	MaxInternalPages, _ = strconv.ParseUint(os.Getenv("MAX_LIMIT_INTERNAL_PAGES"), 10, 64)
 	if *numInternalPage > MaxInternalPages {
@@ -83,6 +88,8 @@ func visitLink(lst chan<- Site, mainLink string,
 		return
 	}
 
+	// library syntax
+	// collecting all the data needed
 	collector := colly.NewCollector()
 
 	collector.OnRequest(func(request *colly.Request) {
@@ -190,6 +197,9 @@ func visitLink(lst chan<- Site, mainLink string,
 		}
 	})
 
+	// library syntax ended
+
+	// O(1) check whether we already crawler the page
 	found := visited.checkIfContains(&mainLink)
 
 	if found {
@@ -202,6 +212,7 @@ func visitLink(lst chan<- Site, mainLink string,
 		domain += "/"
 	}
 
+	// validate page lang
 	if strings.Contains(domain, "uk-ua.") ||
 		strings.Contains(domain, "?lang=uk") || strings.Contains(domain, "/uk/") {
 		pageLang = "ukr"
@@ -220,6 +231,7 @@ func visitLink(lst chan<- Site, mainLink string,
 		strings.Join(mum["li"], "\n") + strings.Join(mum["div"], "\n") +
 		strings.Join(mum["article"], "\n"))
 
+	// double check of the lang
 	if pageLang != "ukr" && pageLang != "ru" {
 		siteLang := checkLang(&site.Content, &site.Title)
 		if siteLang == "Ukrainian" {
@@ -237,6 +249,7 @@ func visitLink(lst chan<- Site, mainLink string,
 	standardLogger.Println("Website supports needed languages -- ", pageLang, " ", mainLink)
 	site.Lang = pageLang
 
+	// addind all child pages to the property of structure
 	site.Hyperlinks = make([]string, 0)
 	for link := range hyperlinksSet.dict {
 		site.Hyperlinks = append(site.Hyperlinks, link)
@@ -250,6 +263,8 @@ func visitLink(lst chan<- Site, mainLink string,
 		site.Link = site.Link[:len(site.Link)-1]
 	}
 
+	// go channel logic 
+	// wait for the channel to have some space for new item
 L:
 	for true {
 		select {
@@ -260,6 +275,8 @@ L:
 		}
 	}
 
+
+	// call parsing for all child pages
 	for _, s := range site.Hyperlinks {
 		visitLink(lst, s, visited, id, numInternalPage, domain)
 	}
@@ -267,6 +284,8 @@ L:
 	return
 }
 
+
+// main entry point of the crawl
 func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 	wg *sync.WaitGroup, failedLinks chan map[string]string, id int) {
 
@@ -286,13 +305,15 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 				domain = domain[:endDomainPos]
 			}
 
+			// call the crawl for domain
 			visited := newSafeSetOfLinks()
 			failed = visitLink(lst, link[0], visited, id, &numInternalPage, domain)
 
 			if failed == nil {
 
 			}
-
+			
+			//say that domain is crawled
 			done <- true
 			if failed != nil {
 				m := make(map[string]string)
@@ -318,6 +339,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	sliceSites := SafeListOfSites{actualSites: make([]Site, 0)}
 	sites := make(chan Site, lenLinks+1)
 	failedLinks := make(chan map[string]string, lenLinks+1)
+	// to kill the finished processes
 	killSignal := make(chan bool)
 	finishElasticInsert := make(chan bool)
 
@@ -325,6 +347,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE_SAVE_INDEX"))
 
 	var numAddedPages uint64
+	// run the number of goroutines to work properly
 	go func(finishElasticInsert chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
 		allParsedLinks *SafeSetOfLinks, numAddedPages *uint64) {
 		wg.Add(1)
@@ -360,6 +383,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	}(finishElasticInsert, &sliceSites, sites, allParsedLinks, &numAddedPages)
 
 	linksQueue := make(chan [2]string)
+	// indicate the finished work
 	done := make(chan bool)
 
 	for i := 0; i < numberOfWorkers; i++ {
@@ -381,6 +405,7 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 		}(j)
 	}
 
+	// wait for all to be done
 	for c := 0; c < numberOfJobs; c++ {
 		<-done
 	}
