@@ -224,7 +224,6 @@ func visitLink(lst chan<- Site, mainLink string,
 	visited.addLink(&mainLink)
 	collector.Visit(mainLink)
 
-	// TODO: reminder that numInternalPage != num pages saved in database
 	atomic.AddUint64(numInternalPage, 1)
 
 	site.Content = strings.TrimSpace(strings.Join(mum["p"], "\n") +
@@ -455,87 +454,84 @@ func main() {
 	titleStr := "start index"
 	setIndexFirstId(esClient, insertUkrIdxName, titleStr, "ukr")
 	setIndexFirstId(esClient, insertRuIdxName, titleStr, "ru")
-	if false {
-		// end elastic connection
+	// end elastic connection
 
-		// ================== set last site id in Task Manager ==================
-		postBody, _ := json.Marshal(map[string]string{
-			"1": "1",
-		})
-		responseBody := bytes.NewBuffer(postBody)
-		http.Post(os.Getenv("TASK_MANAGER_URL")+os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
-			"application/json", responseBody)
+	// ================== set last site id in Task Manager ==================
+	postBody, _ := json.Marshal(map[string]string{
+		"1": "1",
+	})
+	responseBody := bytes.NewBuffer(postBody)
+	http.Post(os.Getenv("TASK_MANAGER_URL")+os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
+		"application/json", responseBody)
 
-		var totalNumAddedPages uint64
-		var continueFlag bool
-		var iterationNumAddedPages uint64
-		iteration := 0
-		totalNumDomains := 0
-		indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
+	var totalNumAddedPages uint64
+	var continueFlag bool
+	var iterationNumAddedPages uint64
+	iteration := 0
+	totalNumDomains := 0
+	indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
 
-		for j := 0; j < len(indexesElasticLinks); j++ {
-			endedIdxLinksCounter := 0
+	for j := 0; j < len(indexesElasticLinks); j++ {
+		endedIdxLinksCounter := 0
 
-			for true {
-				standardLogger.Println("Start getDomainsToParse global iteration ", iteration)
+		for true {
+			standardLogger.Println("Start getDomainsToParse global iteration ", iteration)
 
-				// ================== get links from TaskManager ==================
-				res := responseLinks{}
+			// ================== get links from TaskManager ==================
+			res := responseLinks{}
 
-				if endedIdxLinksCounter == 0 {
-					getDomainsToParse(&res, false)
-					standardLogger.Println("get domains taken: false, parsed: false")
-				} else if endedIdxLinksCounter == 1 {
-					standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
-					break
-				}
-
-				iteration++
-				continueFlag = false
-
-				Block{
-					Try: func() {
-						if res.Links[0][0] == "links ended" {
-							endedIdxLinksCounter++
-							continueFlag = true
-						}
-					},
-					Catch: func(e Exception) {
-						standardLogger.Warnf("Caught %v\n", e)
-						continueFlag = true
-					},
-				}.Do()
-
-				if continueFlag {
-					continue
-				}
-
-				links := res.Links
-
-				standardLogger.Println("start len(links) -- ", len(links))
-				standardLogger.Println("first taken link -- ", links[0])
-				standardLogger.Println("last taken link -- ", links[len(links)-1])
-				var numberOfJobs = len(links)
-
-				// ------ end getting links from TaskManager
-
-				iterationNumAddedPages = crawlLinksPackage(esClient, &links,
-					numberOfWorkers, numberOfJobs, len(links))
-
-				totalNumAddedPages += iterationNumAddedPages
-				totalNumDomains += len(links)
-
-				standardLogger.Println("Iteration  ", iteration, ", after this iteration ",
-					"iterationNumAddedPages -- ",  iterationNumAddedPages, ", num_taken_domains -- ", len(links),
-					"\ntotalNumDomains -- ", totalNumDomains,
-					"\ntotalNumAddedPages -- ", totalNumAddedPages,
-				)
-				finishedCode := time.Now()
-				iterationTime := finishedCode.Sub(startCode)
-
-				standardLogger.Println("Iteration  ", iteration,
-					", total work time after this iteration -- ", iterationTime, "\n\n ")
+			if endedIdxLinksCounter == 0 {
+				getDomainsToParse(&res, false)
+				standardLogger.Println("get domains taken: false, parsed: false")
+			} else if endedIdxLinksCounter == 1 {
+				standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
+				break
 			}
+
+			iteration++
+			continueFlag = false
+
+			Block{
+				Try: func() {
+					if res.Links[0][0] == "links ended" {
+						endedIdxLinksCounter++
+						continueFlag = true
+					}
+				},
+				Catch: func(e Exception) {
+					standardLogger.Warnf("Caught %v\n", e)
+					continueFlag = true
+				},
+			}.Do()
+
+			if continueFlag {
+				continue
+			}
+
+			links := res.Links
+
+			standardLogger.Println("start len(links) -- ", len(links))
+			standardLogger.Println("first taken link -- ", links[0])
+			standardLogger.Println("last taken link -- ", links[len(links)-1])
+			var numberOfJobs = len(links)
+
+			// ------ end getting links from TaskManager
+			iterationNumAddedPages = crawlLinksPackage(esClient, &links,
+				numberOfWorkers, numberOfJobs, len(links))
+
+			totalNumAddedPages += iterationNumAddedPages
+			totalNumDomains += len(links)
+
+			standardLogger.Println("Iteration  ", iteration, ", after this iteration ",
+				"iterationNumAddedPages -- ",  iterationNumAddedPages, ", num_taken_domains -- ", len(links),
+				"\ntotalNumDomains -- ", totalNumDomains,
+				"\ntotalNumAddedPages -- ", totalNumAddedPages,
+			)
+			finishedCode := time.Now()
+			iterationTime := finishedCode.Sub(startCode)
+
+			standardLogger.Println("Iteration  ", iteration,
+				", total work time after this iteration -- ", iterationTime, "\n\n ")
 		}
 	}
 }

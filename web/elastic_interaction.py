@@ -17,7 +17,6 @@ async def elastic_search(search_line, lang):
     pre_tag = "*****"
     post_tag = "*-*-*"
     query = {
-        # "profile": True,
         "size": 20,
         "query": {
             "bool": {
@@ -49,14 +48,13 @@ async def elastic_search(search_line, lang):
 
     hits_list = []
     waiting_response_time = 0
-    # index_name = 'production_data1'
+
     if lang == "uk":
         index_name = os.environ['INDEX_ELASTIC_UKR_COLLECTED_DATA']
 
     else:
         index_name = os.environ['INDEX_ELASTIC_RU_COLLECTED_DATA']
 
-    # TODO: change num waiting cycles after if necessary
     filter_duplicates = set()
     for i in range(3):
         time.sleep(waiting_response_time)
@@ -101,7 +99,6 @@ async def elastic_search(search_line, lang):
                         hits_list.append(website)
                         filter_duplicates.add(hit["_source"]["link"])
 
-                # pprint(res)
                 break
 
         except Exception as err:

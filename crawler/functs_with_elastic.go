@@ -378,8 +378,6 @@ func indexGetLastId(esClient *elasticsearch.Client, indexName string) uint64 {
 				"order": "desc",
 			},
 		},
-
-		//"track_total_hits": false,
 	}
 
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
