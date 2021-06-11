@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+#  web:
+#    image: dmytrolopushanskyy/ucuddle-crawlers:web
+#    restart: always
+##    build: ./web_old
+#    ports:
+#      - "8005:8000"
+#    env_file:
+#      - .flask-env
+#    command: /usr/local/bin/gunicorn -w 2 -b :8000 app:app
+  web:
+    image: dmytrolopushanskyy/ucuddle-crawlers:web
+    restart: always
+#    build: ./web
+    env_file:
+      - shared_vars.env
+    # command: /usr/local/bin/gunicorn --timeout 90 --log-level debug -b 0.0.0.0:8000 app:app
+    command: /usr/local/bin/gunicorn --worker-class gevent --worker-connections 1000 --workers 5 --timeout 90 --log-level debug -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app:app
+  nginx:
+    image: dmytrolopushanskyy/ucuddle-crawlers:nginx
+#    build:
+#      context: .
+#      dockerfile: ./nginx/Dockerfile
+    restart: always
+    ports:
+      - "80:80"
+    links:
+      - web:web
+    depends_on:
+      - web

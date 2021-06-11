@@ -1,0 +1,19 @@
+---
+- name: Stop Crawlers
+  hosts: crawlers
+  gather_facts: no
+  become: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Get running containers
+      community.docker.docker_host_info:
+        containers: yes
+      register: docker_info
+
+    - name: Stop running containers
+      community.docker.docker_container:
+        name: "{{ item }}"
+        state: stopped
+      loop: "{{ docker_info.containers | map(attribute='Id') | list }}"

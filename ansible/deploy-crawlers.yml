@@ -1,0 +1,52 @@
+---
+- name: Deploy Crawlers
+  hosts: crawlers
+  gather_facts: no
+  become: true
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Create Destination Directory
+      file:
+        path: /dmytro/ucuddle
+        state: directory
+        recurse: yes
+
+    - name: copy Docker Compose and Env files
+      copy:
+        src: ../{{ item }}
+        dest: /dmytro/ucuddle/{{ item }}
+      loop:
+        - docker-compose.crawlers.yml
+        - shared_vars.env
+
+    - name: Get running containers
+      community.docker.docker_host_info:
+        containers: yes
+      register: docker_info
+
+    - name: Stop running containers
+      community.docker.docker_container:
+        name: "{{ item }}"
+        state: stopped
+      loop: "{{ docker_info.containers | map(attribute='Id') | list }}"
+
+    - name: Restart Docker Daemon
+      service:
+        name: docker
+        state: restarted
+
+    - name: Pull an image
+      community.docker.docker_image:
+        name: dmytrolopushanskyy/ucuddle-crawlers:crawler
+        source: pull
+        force_source: yes
+        tls: no
+        state: present
+
+    - name: deploy Docker Compose stack
+      community.docker.docker_compose:
+        project_src: /dmytro/ucuddle
+        files:
+          - docker-compose.crawlers.yml

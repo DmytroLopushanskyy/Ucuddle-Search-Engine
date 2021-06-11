@@ -1,0 +1,8 @@
+---
+- hosts: web
+  become: yes
+  gather_facts: no
+  vars:
+    monit_cycle: 30
+  roles:
+    - role: pgolm.monit

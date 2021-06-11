@@ -6,21 +6,21 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/ucuddle_logo.png') }}">
+  <link rel="icon" type="image/png" href="static/img/ucuddle_logo.png" />
 
   <!-- Fonts -->
-  <link href="{{ url_for('static', filename='css/fonts.css') }}" rel="stylesheet" />
+  <link href="static/css/fonts.css" rel="stylesheet" />
 
   <!-- Main stylesheet -->
-  <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet" />
-</head> 
+  <link href="static/css/main.css" rel="stylesheet" />
+</head>
 <body id="main-page" class="hidden">
 
-  <div class="search-container">
-    <h1 class="title">ucuddle</h1>
-    <input id="search" type="text" placeholder="Шукайте в ucuddle">
-    <ul class="drop"></ul>
-  </div>
+<div class="search-container">
+  <h1 class="title">ucuddle</h1>
+  <input id="search" type="text" placeholder="Шукайте в ucuddle">
+  <ul class="drop"></ul>
+</div>
 
 <!-- JQuery -->
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -29,6 +29,7 @@
 <script src="https://kit.fontawesome.com/4ca9a98a81.js"> </script>
 
 <!-- Custom Scripts -->
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="static/js/main.js"></script>
 </body>
 </html>
+

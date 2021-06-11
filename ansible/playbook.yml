@@ -1,6 +1,6 @@
 ---
 - name: Install Docker and Docker Compose on VMs
-  hosts: all
+  hosts: curr
   become: true
 
   tasks:
