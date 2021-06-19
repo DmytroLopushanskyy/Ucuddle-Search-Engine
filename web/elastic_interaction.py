@@ -17,6 +17,7 @@ async def elastic_search(search_line, lang):
     pre_tag = "*****"
     post_tag = "*-*-*"
     query = {
+        # "profile": True,
         "size": 20,
         "query": {
             "bool": {
@@ -48,13 +49,14 @@ async def elastic_search(search_line, lang):
 
     hits_list = []
     waiting_response_time = 0
-
+    # index_name = 'production_data1'
     if lang == "uk":
         index_name = os.environ['INDEX_ELASTIC_UKR_COLLECTED_DATA']
 
     else:
         index_name = os.environ['INDEX_ELASTIC_RU_COLLECTED_DATA']
 
+    # TODO: change num waiting cycles after if necessary
     filter_duplicates = set()
     for i in range(3):
         time.sleep(waiting_response_time)
@@ -77,12 +79,9 @@ async def elastic_search(search_line, lang):
                 print("Got %d Hits:" % res['hits']['total']['value'])
                 for hit in res['hits']['hits']:
                     if hit["_source"]["link"] not in filter_duplicates:
-                        website = dict()
-
                         print('hit["_source"]["title"]', hit["_source"]["title"])
                         print('hit["_score"]', hit["_score"])
-                        website["title"] = hit["_source"]["title"][0].upper() + hit["_source"]["title"][1:]
-                        website["link"] = hit["_source"]["link"]
+                        hit["_source"]["title"] = hit["_source"]["title"][0].upper() + hit["_source"]["title"][1:]
 
                         # set up bold for highlight
                         try:
@@ -91,14 +90,15 @@ async def elastic_search(search_line, lang):
                             hit["_source"]["highlight"] = soup.get_text()
                             hit["_source"]["highlight"] = hit["_source"]["highlight"].replace(pre_tag, "<b>")
                             hit["_source"]["highlight"] = hit["_source"]["highlight"].replace(post_tag, "</b>")
-                            website["highlight"] = Markup(hit["_source"]["highlight"])
+                            hit["_source"]["highlight"] = Markup(hit["_source"]["highlight"])
                         except Exception as e:
                             print("elastic_search(): Error with highlight -- ", e)
-                            website["highlight"] = "..."
+                            hit["_source"]["highlight"] = "..."
 
-                        hits_list.append(website)
+                        hits_list.append(hit["_source"])
                         filter_duplicates.add(hit["_source"]["link"])
 
+                # pprint(res)
                 break
 
         except Exception as err:

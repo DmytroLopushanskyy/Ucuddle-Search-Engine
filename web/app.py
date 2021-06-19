@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 
 from elastic_interaction import elastic_search
 
@@ -31,11 +30,7 @@ async def search(request: Request, query: str = ""):
     if not query or len(query) < 3:
         return templates.TemplateResponse("index.html", {"request": request})
 
-    try:
-        lang = detect(query)
-    except Exception as e:
-        print("search(): error in lang detection", e)
-        lang = "uk"
+    lang = detect(query)
 
     websites = await elastic_search(query, lang)
     data = {
@@ -88,4 +83,4 @@ async def more_links(start: int = 0, end: int = 0, search: str = ""):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8090)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

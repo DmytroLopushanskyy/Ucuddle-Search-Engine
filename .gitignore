@@ -1,19 +1,2 @@
-/.idea
-elastic-interaction/buf.go
-crawler/buf.go
-task-manager/buf.py
-helper_notes.txt
-profile_logs.txt
-web/buf.py
-
-# important files
-*.env
-*.crawlers-env
-*.flask-env
-
-.DS_Store
-task-manager/test_functs.py
-ansible/hosts.ini
-
-crawler/ucuddle-crawlers
-web/__pycache__
+.idea
+shared_vars.env

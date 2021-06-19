@@ -25,7 +25,7 @@ def update_config_index():
                                 body=body_dict)
 
     except:
-        print("Creating new index for config")
+        print("Create new index for config")
         body_dict = {
             os.environ["LAST_LINK_ID_KEY_ELASTIC"]: last_link_id
         }
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     if answer.lower() == "yes":
         update_config_index()
 
-    with open(os.path.join("..", "files", "ua_domains_660k.json"), "r", encoding="utf-8") as f:
+    with open(os.path.join("..", "files", "ukr_domains.json"), "r", encoding="utf-8") as f:
         dict_links = json.load(f)
 
     options = ["Create new indexes and fill them with links OR append to the first index_name in INDEXES_ELASTIC_LINKS",
@@ -61,12 +61,10 @@ if __name__ == '__main__':
 
     if n_option == 1:
         slice_id = 0
-
-        # TODO: set up last 10 domains from first 10k
-        step = 1
+        step = 10000
 
         indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
-        for i in range(0):
+        for i in range(1):
             url = os.environ["TASK_MANAGER_URL"] + os.environ["TASK_MANAGER_ENDPOINT_ADD_LINKS"]
             response = requests.post(url, json={
                 "links_index_name": indexes_names[i],
@@ -79,7 +77,7 @@ if __name__ == '__main__':
 
     elif n_option == 2:
         slice_id = 0
-        step = 670000
+        step = 30
 
         indexes_names = os.environ["INDEXES_ELASTIC_LINKS"].split()
         url = os.environ["TASK_MANAGER_URL"] + os.environ["TASK_MANAGER_ENDPOINT_ADD_LINKS"]
