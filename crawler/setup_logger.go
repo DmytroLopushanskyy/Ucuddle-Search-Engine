@@ -43,6 +43,9 @@ func NewLogger() *StandardLogger {
 	}
 	standardLogger.SetFormatter(formatter)
 
+	// in case debugging -- use this attribute
+	//standardLogger.SetLevel(logrus.DebugLevel)
+
 	return standardLogger
 }
 

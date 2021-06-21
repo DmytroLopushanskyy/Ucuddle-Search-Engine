@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -116,7 +117,7 @@ func setIndexUkrAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 	fmt.Println(res)
 
 	if res.Status() != "200 OK" { // SKIP
-		fmt.Println("ERROR in setIndexUkrAnalyzer():")
+		standardLogger.Errorln("ERROR in setIndexUkrAnalyzer():")
 		fmt.Println(res, err)
 		os.Exit(3)
 	}
@@ -193,11 +194,11 @@ func setIndexRuAnalyzer(es *elasticsearch.Client, saveStrIdx string) {
 		es.Indices.Create.WithBody(&buf),
 	)
 
-	standardLogger.Println("\nsetIndexUkrAnalyzer")
+	standardLogger.Println("\nsetIndexRuAnalyzer")
 	fmt.Println(res)
 
 	if res.Status() != "200 OK" { // SKIP
-		fmt.Println("ERROR in setIndexUkrAnalyzer():")
+		standardLogger.Errorln("ERROR in setIndexUkrAnalyzer():")
 		fmt.Println(res, err)
 		os.Exit(3)
 	}
@@ -459,4 +460,75 @@ func searchQuery(es *elasticsearch.Client, searchStrIdx string, queryBuf *bytes.
 	)
 
 	return values[2].Array()
+}
+
+func proxyLoadNewDomains(linksQueue chan [2]string, proxyIsFree *int32,
+	wg *sync.WaitGroup, curLinksIndexId *uint) {
+	var continueFlag bool
+	iteration := 0
+
+	//indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
+
+	//loop:
+	//for j := 0; j < len(indexesElasticLinks); j++ {
+	endedIdxLinksCounter := 0
+
+	for true {
+		standardLogger.Println("Start proxyLoadNewDomains() global iteration ", iteration)
+
+		// ================== get links from TaskManager ==================
+		res := responseLinks{}
+
+		if endedIdxLinksCounter == 0 {
+			getDomainsToParse(&res, false)
+			standardLogger.Println("get domains taken: false, parsed: false")
+		} else if endedIdxLinksCounter == 1 {
+			standardLogger.Println("proxyLoadNewDomains(): reached end of the current index_name, global iteration over indexes_names")
+			break
+		}
+
+		iteration++
+		continueFlag = false
+
+		Block {
+			Try: func() {
+				standardLogger.Debug("res.Links -- ", res.Links)
+				if res.Links[0][0] == "links ended" {
+					endedIdxLinksCounter++
+					*curLinksIndexId++
+					//continueFlag = true
+				}
+			},
+			Catch: func(e Exception) {
+				standardLogger.Warnf("Caught %v\n", e)
+				continueFlag = true
+			},
+		}.Do()
+
+		if continueFlag {
+			continue
+		}
+
+		if res.Links[0][0] == "links ended" {
+			break
+		}
+
+		standardLogger.Debug("proxyLoadNewDomains len(linksQueue) before cycle -- ", len(linksQueue))
+		for _, link := range res.Links {
+			//wg.Add(1)
+
+			// avoid http links and complete to a full link of domain
+			if !strings.Contains(link[0], "http") {
+				linksQueue <- [2]string{"https://" + link[0], link[1]}
+			} else {
+				linksQueue <- link
+			}
+		}
+		standardLogger.Debug("proxyLoadNewDomains len(linksQueue) after cycle -- ", len(linksQueue))
+
+		break
+	}
+	//}
+
+	atomic.AddInt32(proxyIsFree, 1)
 }

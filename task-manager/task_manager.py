@@ -41,15 +41,25 @@ class TaskManager:
 
     def create_new_index(self, index_name):
         logging.debug("Creating new index")
-        if index_name != "la_links_to_parse1":
-            res = self.es_client.indices.create(index=index_name, ignore=400)
 
-            if res.get('status', 0) != 0:
-                print("Error reason: ", res['error']['reason'])
-                return res['status']
+        try:
+            if index_name != "la_links_to_parse1":
+                res = self.es_client.indices.create(
+                    index=index_name,
+                    ignore=400,
+                    request_timeout=120
+                )
 
-            logging.debug("Elastic response for creating new index: ", res)
-        return 200
+                if res.get('status', 0) != 0:
+                    print("Error reason: ", res['error']['reason'])
+                    return res['status']
+
+                logging.debug("Elastic response for creating new index: ", res)
+            return 200
+
+        except Exception as err:
+            print("create_new_index(): error -- ", err)
+            return 400
 
     def retrieve_links(self, num_links, taken_value):
         query = {

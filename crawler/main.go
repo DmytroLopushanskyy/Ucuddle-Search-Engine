@@ -4,20 +4,27 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocolly/colly"
-	//"github.com/joho/godotenv"
+	"github.com/joho/godotenv"
+	"path"
+
 	"io/ioutil"
 	"net/http"
 	"os"
-	//"path"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 )
+
+const PROXY_PERCENT_LOWER_LIMIT float64 = 0.5
+var DEAD_WORKERS int32 = 0
+
+var CUR_INDEX_LINKS_ID uint
+var NUM_INDEXES_LINKS_ID uint
+var NUM_LINKS_PER_CRAWLER float64
+
 
 func writeSliceJSON(data []Site, writefile string) {
 	file, err := json.MarshalIndent(data, "", " ")
@@ -269,7 +276,8 @@ L:
 }
 
 func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
-	wg *sync.WaitGroup, failedLinks chan map[string]string, id int) {
+	wg *sync.WaitGroup, failedLinks chan map[string]string, id int,
+	proxyIsFree *int32, numVisitedDomains *uint32, finishElasticInsert chan bool) {
 
 	var domain string
 	var endDomainPos int
@@ -289,12 +297,15 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 
 			visited := newSafeSetOfLinks()
 			failed = visitLink(lst, link[0], visited, id, &numInternalPage, domain)
+			atomic.AddUint32(numVisitedDomains, 1)
+
+			standardLogger.Info("total numVisitedDomains -- ", *numVisitedDomains)
 
 			if failed == nil {
 
 			}
 
-			done <- true
+			//done <- true
 			if failed != nil {
 				m := make(map[string]string)
 				m["link"] = link[0]
@@ -304,9 +315,39 @@ func crawl(lst chan<- Site, linksQueue chan [2]string, done, ks chan bool,
 
 			setParsedLink(link[1])
 
-			defer wg.Done()
-		case <-ks:
-			return
+			standardLogger.Debug("len(linksQueue) -- ", len(linksQueue),
+				"\n int(PROXY_PERCENT_LOWER_LIMIT * NUM_LINKS_PER_CRAWLER) + 1 -- ",
+				int(PROXY_PERCENT_LOWER_LIMIT * NUM_LINKS_PER_CRAWLER) + 1,
+				"\n proxyIsFree -- ", *proxyIsFree)
+			if len(linksQueue) < (int(PROXY_PERCENT_LOWER_LIMIT * NUM_LINKS_PER_CRAWLER) + 1) && *proxyIsFree == 1 {
+				atomic.AddInt32(proxyIsFree, -1)
+				standardLogger.Info("achieved limit of num domains in linksQueue, proxyIsFree -- ", *proxyIsFree)
+				proxyLoadNewDomains(linksQueue, proxyIsFree, wg, &CUR_INDEX_LINKS_ID)
+				standardLogger.Info("after proxyLoadNewDomains proxyIsFree -- ", *proxyIsFree)
+				standardLogger.Info("after proxyLoadNewDomains len(linksQueue) -- ", len(linksQueue))
+			}
+
+			// TODO: actually it does not stop all crawlers
+			//  which are running on different machines. So it should be fixed
+			// achieved "links ended" in each of indexes of links in elasticsearch
+			if CUR_INDEX_LINKS_ID >= NUM_INDEXES_LINKS_ID {
+				standardLogger.Info("linksQueue is empty -- return")
+				//finishElasticInsert <- true
+				//ks <- true
+				atomic.AddInt32(&DEAD_WORKERS, 1)
+
+				return
+			}
+
+			//defer wg.Done()
+		//case <-ks:
+		default:
+			if CUR_INDEX_LINKS_ID >= NUM_INDEXES_LINKS_ID {
+				//finishElasticInsert <- true
+				standardLogger.Info("Got killsignal")
+				atomic.AddInt32(&DEAD_WORKERS, 1)
+				return
+			}
 		}
 	}
 }
@@ -321,16 +362,24 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 	failedLinks := make(chan map[string]string, lenLinks+1)
 	killSignal := make(chan bool)
 	finishElasticInsert := make(chan bool)
+	done := make(chan bool)
+
+	var proxyIsFree int32
+	proxyIsFree = 1
+
+	var numVisitedDomains uint32
+	numVisitedDomains = 0
 
 	allParsedLinks := newSafeSetOfLinks()
 	packageSize, _ := strconv.Atoi(os.Getenv("NUM_SITES_IN_PACKAGE_SAVE_INDEX"))
 
+	// TODO: if necessary -- set up two goroutince to write in elassticsearch
 	var numAddedPages uint64
 	go func(finishElasticInsert chan bool, sliceSites *SafeListOfSites, sites <-chan Site,
-		allParsedLinks *SafeSetOfLinks, numAddedPages *uint64) {
+		allParsedLinks *SafeSetOfLinks, numAddedPages *uint64, done chan bool) {
 		wg.Add(1)
 
-	F:
+		F:
 		for true {
 			select {
 			// take from channel of parsed sites and insert in elasticsearch
@@ -346,48 +395,48 @@ func crawlLinksPackage(esClient *elasticsearch.Client, links *[][2]string,
 					elasticInsert(esClient, &sliceSites.actualSites, 0)
 				}
 
-			case <-finishElasticInsert:
-				if len(sites) == 0 {
+			default:
+				if len(sites) == 0 && int(DEAD_WORKERS) == numberOfWorkers {
+					standardLogger.Info("finishElasticInsert break, len(sites) -- ", len(sites))
 					break F
 				}
 			}
 		}
+		done <- true
 
 		if len(sliceSites.actualSites) != 0 {
 			elasticInsert(esClient, &sliceSites.actualSites,0)
 		}
 
 		defer wg.Done()
-	}(finishElasticInsert, &sliceSites, sites, allParsedLinks, &numAddedPages)
+	} (finishElasticInsert, &sliceSites, sites, allParsedLinks, &numAddedPages, done)
 
-	linksQueue := make(chan [2]string)
-	done := make(chan bool)
-
+	linksQueue := make(chan [2]string, int(NUM_LINKS_PER_CRAWLER * 2))
 	for i := 0; i < numberOfWorkers; i++ {
-		go crawl(sites, linksQueue, done, killSignal, &wg, failedLinks, i)
+		go crawl(sites, linksQueue, done, killSignal, &wg, failedLinks, i, &proxyIsFree,
+			&numVisitedDomains, finishElasticInsert)
 	}
 
 	for j := 0; j < numberOfJobs; j++ {
 		// TODO: check duplicate at the beginning when take domain
-		go func(j int) {
-			wg.Add(1)
 
-			// avoid http links and complete to a full link of domain
-			if !strings.Contains((*links)[j][0], "http") {
-				linksQueue <- [2]string{"https://" + (*links)[j][0], (*links)[j][1]}
-			} else {
-				linksQueue <- (*links)[j]
-			}
-
-		}(j)
+		// avoid http links and complete to a full link of domain
+		if !strings.Contains((*links)[j][0], "http") {
+			linksQueue <- [2]string{"https://" + (*links)[j][0], (*links)[j][1]}
+		} else {
+			linksQueue <- (*links)[j]
+		}
 	}
 
-	for c := 0; c < numberOfJobs; c++ {
-		<-done
-	}
+	//for c := 0; c < numberOfWorkers; c++ {
+	<-done
+	//}
+
+	standardLogger.Info("collect all elements in done channel")
 
 	close(killSignal)
 	close(finishElasticInsert)
+	standardLogger.Info("near wg.Wait()")
 	wg.Wait()
 
 	close(sites)
@@ -400,28 +449,31 @@ func main() {
 	os.Setenv("COLLY_IGNORE_ROBOTSTXT", "n")
 
 	// Perform health-check
-	for {
-		_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
-		_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
-		fmt.Println("Waiting for Elasticsearch and Task Manager to be alive.")
-		if err_elastic == nil && err_manager == nil {
-			break
-		}
-		time.Sleep(time.Second)
-	}
+	//for {
+	//	_, err_elastic := http.Get(os.Getenv("ELASTICSEARCH_URL"))
+	//	_, err_manager := http.Get(os.Getenv("TASK_MANAGER_URL") + "/health_check")
+	//	fmt.Println("Waiting for Elasticsearch and Task Manager to be alive.")
+	//	if err_elastic == nil && err_manager == nil {
+	//		break
+	//	}
+	//	time.Sleep(time.Second)
+	//}
 	// Elasticsearch and Task Manager have started. The program begins
-	startCode := time.Now()
 
 	// load .env file
 	//err := godotenv.Load(path.Join("shared_vars.env"))
-	//err := godotenv.Load(path.Join("..", "shared_vars.env"))
-	//
-	//if err != nil {
-	//	standardLogger.Fatal("Error loading .env file")
-	//}
+	err := godotenv.Load(path.Join("..", "shared_vars.env"))
+
+	if err != nil {
+		standardLogger.Fatal("Error loading .env file")
+	}
+
+	NUM_LINKS_PER_CRAWLER, err = strconv.ParseFloat(os.Getenv("NUM_LINKS_PER_CRAWLER"), 64)
+	CUR_INDEX_LINKS_ID = 0
+	NUM_INDEXES_LINKS_ID = uint(len(strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")))
 
 	// ================== setup configuration ==================
-	numberOfWorkers := 1000
+	numberOfWorkers := 8
 
 	// ================== elastic connection ==================
 	esClient := elasticConnect()
@@ -441,76 +493,19 @@ func main() {
 	http.Post(os.Getenv("TASK_MANAGER_URL")+os.Getenv("TASK_MANAGER_ENDPOINT_SET_LAST_SITE_ID"),
 		"application/json", responseBody)
 
-	var totalNumAddedPages uint64
-	var continueFlag bool
-	var iterationNumAddedPages uint64
-	iteration := 0
-	totalNumDomains := 0
-	indexesElasticLinks := strings.Split(os.Getenv("INDEXES_ELASTIC_LINKS"), " ")
+	// ================== get links from TaskManager ==================
+	res := responseLinks{}
+	getDomainsToParse(&res, false)
+	standardLogger.Println("get domains taken: false, parsed: false")
 
-	for j := 0; j < len(indexesElasticLinks); j++ {
-		endedIdxLinksCounter := 0
+	links := res.Links
 
-		for true {
-			standardLogger.Println("Start getDomainsToParse global iteration ", iteration)
+	standardLogger.Println("start len(links) -- ", len(links))
+	standardLogger.Println("first taken link -- ", links[0])
+	standardLogger.Println("last taken link -- ", links[len(links)-1])
+	var numberOfJobs = len(links)
 
-			// ================== get links from TaskManager ==================
-			res := responseLinks{}
+	// ------ end getting links from TaskManager
 
-			if endedIdxLinksCounter == 0 {
-				getDomainsToParse(&res, false)
-				standardLogger.Println("get domains taken: false, parsed: false")
-			} else if endedIdxLinksCounter == 1 {
-				standardLogger.Println("reached end of the current index_name, global iteration over indexes_names -- ", j)
-				break
-			}
-
-			iteration++
-
-			continueFlag = false
-
-			Block{
-				Try: func() {
-					if res.Links[0][0] == "links ended" {
-						endedIdxLinksCounter++
-						continueFlag = true
-					}
-				},
-				Catch: func(e Exception) {
-					standardLogger.Warnf("Caught %v\n", e)
-					continueFlag = true
-				},
-			}.Do()
-
-			if continueFlag {
-				continue
-			}
-
-			links := res.Links
-
-			standardLogger.Println("start len(links) -- ", len(links))
-			standardLogger.Println("first taken link -- ", links[0])
-			standardLogger.Println("last taken link -- ", links[len(links)-1])
-			var numberOfJobs = len(links)
-
-			// ------ end getting links from TaskManager
-
-			iterationNumAddedPages = crawlLinksPackage(esClient, &links,
-				numberOfWorkers, numberOfJobs, len(links))
-
-			totalNumAddedPages += iterationNumAddedPages
-			totalNumDomains += len(links)
-
-			standardLogger.Println("Iteration  ", iteration, ", after this iteration ",
-				"iterationNumAddedPages -- ",  iterationNumAddedPages, ", num_taken_domains -- ", len(links),
-				"\ntotalNumDomains -- ", totalNumDomains,
-				"\ntotalNumAddedPages -- ", totalNumAddedPages,
-			)
-			finishedCode := time.Now()
-			iterationTime := finishedCode.Sub(startCode)
-
-			standardLogger.Println("Iteration  ", iteration,
-				", total work time after this iteration -- ", iterationTime, "\n\n ")
-		}
-	}
+	crawlLinksPackage(esClient, &links, numberOfWorkers, numberOfJobs, len(links))
 }

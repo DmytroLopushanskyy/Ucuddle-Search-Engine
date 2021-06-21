@@ -1,0 +1,26 @@
+============================== TEST 1 ==============================
+
+For this configuration in .env file there are less than 200 new documents in db
+
+number of workers in one crawler = 8
+parsed 14 in all_valid_domains.json and ua_domains_200.json
+
+# !!! important to setup
+MAX_LIMIT_INTERNAL_PAGES=5
+NUM_LINKS_PER_CRAWLER=8
+NUM_SITES_IN_PACKAGE_SAVE_INDEX=10
+
+
+
+============================== TEST 2 ==============================
+
+For this configuration in .env file there are less than ru -- 1841, ukr -- 974, total -- 2815  new documents in db
+
+number of workers in one crawler = 8
+parsed 14 in all_valid_domains.json + 2003, total -- 2017 from ua_domains_10000.json
+CPU usage was in range 8-50 % for 3 instances of crawlers in my laptop with 6 CPU cores
+
+# !!! important to setup
+MAX_LIMIT_INTERNAL_PAGES=10
+NUM_LINKS_PER_CRAWLER=8
+NUM_SITES_IN_PACKAGE_SAVE_INDEX=10
